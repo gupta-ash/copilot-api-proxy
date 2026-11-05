@@ -134,8 +134,8 @@ try {
     $newPreservation=@(Get-ChildItem -LiteralPath $work -Directory -Filter 'preservation-*' | Where-Object { $beforePreservation -cnotcontains $_.FullName })
     if ($newPreservation.Count -ne 1) { throw 'Failed operation did not retain one identifiable private preservation set.' }
     $preservation=$newPreservation[0].FullName
-    $inventory=@(Read-InstallJson (Join-Path $preservation 'inventory.json'))
-    $candidateFiles=@(Read-InstallJson (Join-Path $preservation 'candidate-files.json'))
+    $inventory=Read-InstallJson (Join-Path $preservation 'inventory.json')
+    $candidateFiles=Read-InstallJson (Join-Path $preservation 'candidate-files.json')
     $candidateMap=@{}; foreach ($row in $candidateFiles) { $candidateMap[$row.path]=$row }
     $priorMap=@{}; foreach ($row in $priorRecovery.files) { $priorMap[$row.path]=$row }
     $manualRestore=@(); $manualRemove=@()

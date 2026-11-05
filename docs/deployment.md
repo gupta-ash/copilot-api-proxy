@@ -105,9 +105,9 @@ For inspection, use the exact paths printed by the failed operation, not a searc
 
 ```powershell
 $Preservation = '<exact-private-preservation-path-from-failure>'
-$Inventory = @(Get-Content -LiteralPath (Join-Path $Preservation 'inventory.json') -Raw | ConvertFrom-Json)
-$Candidates = @(Get-Content -LiteralPath (Join-Path $Preservation 'candidate-files.json') -Raw | ConvertFrom-Json)
-$Effects = @(Get-Content -LiteralPath (Join-Path $Preservation 'partial-effects.json') -Raw | ConvertFrom-Json)
+$Inventory = Get-Content -LiteralPath (Join-Path $Preservation 'inventory.json') -Raw | ConvertFrom-Json
+$Candidates = Get-Content -LiteralPath (Join-Path $Preservation 'candidate-files.json') -Raw | ConvertFrom-Json
+$Effects = Get-Content -LiteralPath (Join-Path $Preservation 'partial-effects.json') -Raw | ConvertFrom-Json
 $Inventory | Format-Table path,backup,sha256
 $Candidates | Format-Table path,sha256,mode,existed_before
 $Effects
