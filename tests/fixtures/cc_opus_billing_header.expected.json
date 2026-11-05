@@ -1,0 +1,51 @@
+{
+  "model": "claude-opus-4-7",
+  "max_tokens": 512,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Name two colors in the sample palette."
+        }
+      ]
+    }
+  ],
+  "system": [
+    {
+      "type": "text",
+      "text": "The sample palette contains blue and gold. Reply using the palette only.",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "tools": [
+    {
+      "name": "lookup_color",
+      "description": "Look up a color in the fictional sample palette.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "gold"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ],
+  "metadata": {
+    "user_id": "synthetic-public-fixture"
+  },
+  "temperature": 0
+}

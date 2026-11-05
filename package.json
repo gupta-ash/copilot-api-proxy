@@ -1,0 +1,54 @@
+{
+  "name": "copilot-proxy",
+  "version": "0.0.1",
+  "description": "Multi-harness proxy for GitHub Copilot Enterprise — engine-driven transformations, modular by structure",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "copilot-proxy": "./dist/main.js"
+  },
+  "files": [
+    "dist",
+    "config"
+  ],
+  "scripts": {
+    "prebuild": "bun run scripts/gen_version.ts && bun run scripts/gen_barrel.ts",
+    "build": "tsdown",
+    "dev": "bun run --watch ./src/main.ts",
+    "start": "NODE_ENV=production bun run ./src/main.ts",
+    "test": "bun test",
+    "test:e2e": "RUN_E2E=1 bun test tests/e2e/",
+    "typecheck": "tsc",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"*.json\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"*.json\" \"*.md\"",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "consola": "^3.4.2",
+    "fetch-event-stream": "^0.1.5",
+    "hono": "^4.9.9",
+    "semver": "^7",
+    "srvx": "^0.8.9",
+    "tiny-invariant": "^1.3.3",
+    "undici": "^7.16.0",
+    "yaml": "^2.6.0",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.23",
+    "@types/semver": "^7",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import": "^2.0.0",
+    "fast-check": "^3.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "tsdown": "^0.15.6",
+    "typescript": "^5.9.3"
+  }
+}

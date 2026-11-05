@@ -1,0 +1,74 @@
+{
+  "model": "claude-opus-4.7",
+  "stream": true,
+  "max_output_tokens": 512,
+  "reasoning": {
+    "effort": "high"
+  },
+  "input": [
+    {
+      "role": "developer",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Use only the fictional sample palette."
+        }
+      ]
+    },
+    {
+      "type": "message",
+      "role": "system",
+      "content": "The palette contains blue and gold."
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "Look up blue and report its label."
+        }
+      ]
+    },
+    {
+      "type": "function_call",
+      "call_id": "call_public_blue",
+      "name": "lookup_color",
+      "arguments": "{\"name\":\"blue\"}"
+    },
+    {
+      "type": "function_call_output",
+      "call_id": "call_public_blue",
+      "output": "blue"
+    },
+    {
+      "role": "user",
+      "content": "Keep the original spelling."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "name": "lookup_color",
+      "description": "Look up a fictional palette label.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "blue",
+              "gold"
+            ]
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "type": "web_search"
+    }
+  ]
+}

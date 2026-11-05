@@ -1,0 +1,133 @@
+copilot-proxy
+=============
+
+This project includes code adapted from xianml/copilot-api-pro
+(https://github.com/xianml/copilot-api-pro), which is MIT-licensed.
+
+Each adapted file carries a `// Adapted from xianml/copilot-api-pro@<sha>`
+attribution comment at the file head. The upstream project's LICENSE is
+reproduced below per MIT terms:
+
+----- Begin xianml/copilot-api-pro LICENSE -----
+MIT License
+
+Copyright (c) 2025 Erick Christian Purwanto
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+----- End xianml/copilot-api-pro LICENSE -----
+
+The transformation interfaces also derive from musistudio/claude-code-router
+(https://github.com/musistudio/claude-code-router). Its MIT license is retained
+below; source: https://github.com/musistudio/claude-code-router/blob/main/LICENSE
+(Git license blob ea7e8ac7eaa03b527619224c56314fec67929101).
+
+----- Begin musistudio/claude-code-router LICENSE -----
+MIT License
+
+Copyright (c) 2025 musistudio
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+----- End musistudio/claude-code-router LICENSE -----
+
+node-fetch/fetch-blob (incorporated by Undici)
+Source: https://github.com/node-fetch/fetch-blob/blob/8ab587d34080de94140b54f07168451e7d0b655e/LICENSE
+Git license blob: 0d317232f7e1b9a9d64690c39956b436a10131fe
+
+MIT License
+
+Copyright (c) 2019 David Frank
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+nodejs/llhttp (Undici parser)
+Source: https://github.com/nodejs/llhttp/blob/main/LICENSE
+Git license blob: 23682c03875844d5becc72ab477a3f9056b6d888
+
+MIT License
+
+Copyright © 2018 Fedor Indutny
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the
+following conditions:
+
+The above copyright notice and this permission notice shall be included
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+Zod standard-format reference credits
+-------------------------------------
+Zod 4.3.6 is included unmodified under its bundled MIT LICENSE, with its
+original source attributions. Its regular-expression source cites these
+external discussions of base64, RFC hostname and ISO datetime grammar:
+
+- Dave Newton: https://stackoverflow.com/a/7860409
+  Original post: https://creativecommons.org/licenses/by-sa/4.0/
+- Jorge Ferreira: https://stackoverflow.com/a/106223
+  Original post: https://creativecommons.org/licenses/by-sa/4.0/
+- Brock Adams: https://stackoverflow.com/a/3143231
+  Original post: https://creativecommons.org/licenses/by-sa/2.5/
+
+These credits preserve the cited originals' authorship and license links;
+they do not relicense Zod or grant this project's MIT license over those posts.

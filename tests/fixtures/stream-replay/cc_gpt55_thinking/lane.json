@@ -1,0 +1,55 @@
+{
+  "description": "Synthetic Responses stream: three reasoning segments, multi-chunk text and structural-event passthrough.",
+  "inbound_path": "/v1/messages",
+  "inbound_method": "POST",
+  "model": "gpt-5.5",
+  "body_rules": [
+    {
+      "name": "redirect",
+      "use": "redirect_to_responses"
+    },
+    {
+      "name": "body_translate",
+      "use": "translate_anthropic_to_responses"
+    }
+  ],
+  "header_rules": [],
+  "stream_event_rules": [
+    {
+      "name": "stream_translate",
+      "use": "translate_responses_event_to_anthropic_event"
+    }
+  ],
+  "response_rules": [
+    {
+      "name": "response_passthrough",
+      "use": "response_passthrough_openai_responses"
+    }
+  ],
+  "upstream": {
+    "via": "copilot_enterprise",
+    "via_endpoint": "openai_responses",
+    "shape": "openai_responses"
+  },
+  "request_body": {
+    "model": "gpt-5.5",
+    "stream": true,
+    "max_tokens": 32000,
+    "messages": [
+      {
+        "role": "user",
+        "content": "List 48 numbered samples of a fictional palette containing blue and gold, with short reasoning summaries."
+      }
+    ]
+  },
+  "request_headers": {
+    "content-type": "application/json",
+    "accept": "text/event-stream"
+  },
+  "source": {
+    "type": "synthetic",
+    "authoring": "Independently authored public protocol example; not a redacted capture.",
+    "sha256": "643f1ca9af414fe553e43021a39a019a51828259356597bad674995196387e10",
+    "expected_client_sha256": "505366ea98b909cb421717405074c39d1a31b835330e1d145dea175ec4ce452b"
+  }
+}

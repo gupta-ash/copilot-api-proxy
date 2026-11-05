@@ -1,0 +1,133 @@
+{
+  "name": "parallel-tools-public-synthetic",
+  "provenance": "synthetic",
+  "synthesis_rationale": "Independently authored protocol example: two tool blocks open concurrently, receive interleaved argument fragments, and stop in reverse order. No captured conversation is included.",
+  "ground_truth_basis": "Public protocol shapes and per-block identity, argument assembly, stop-order and usage invariants asserted by tests/integration/phase16_replay.test.ts.",
+  "leg2_anthropic_sse_events": [
+    {
+      "type": "message_start",
+      "message": {
+        "id": "msg_synth_parallel_1",
+        "model": "claude-test",
+        "usage": { "input_tokens": 200, "output_tokens": 0 }
+      }
+    },
+    {
+      "type": "content_block_start",
+      "index": 0,
+      "content_block": {
+        "type": "tool_use",
+        "id": "toolu_b0_read",
+        "name": "read_file"
+      }
+    },
+    {
+      "type": "content_block_start",
+      "index": 1,
+      "content_block": {
+        "type": "tool_use",
+        "id": "toolu_b1_list",
+        "name": "list_files"
+      }
+    },
+    {
+      "type": "content_block_delta",
+      "index": 0,
+      "delta": { "type": "input_json_delta", "partial_json": "{\"path\":" }
+    },
+    {
+      "type": "content_block_delta",
+      "index": 1,
+      "delta": { "type": "input_json_delta", "partial_json": "{\"dir\":" }
+    },
+    {
+      "type": "content_block_delta",
+      "index": 0,
+      "delta": { "type": "input_json_delta", "partial_json": "\"a.txt\"}" }
+    },
+    {
+      "type": "content_block_delta",
+      "index": 1,
+      "delta": { "type": "input_json_delta", "partial_json": "\".\"}" }
+    },
+    {
+      "type": "content_block_stop",
+      "index": 1
+    },
+    {
+      "type": "content_block_stop",
+      "index": 0
+    },
+    {
+      "type": "message_delta",
+      "delta": { "stop_reason": "tool_use" },
+      "usage": { "output_tokens": 35 }
+    },
+    {
+      "type": "message_stop"
+    }
+  ],
+  "expected_responses_sse_events": [
+    {
+      "type": "response.created",
+      "response": {
+        "id": "msg_synth_parallel_1",
+        "object": "response",
+        "model": "claude-test",
+        "status": "in_progress",
+        "output": [],
+        "usage": {
+          "input_tokens": 200,
+          "input_tokens_details": { "cached_tokens": 0 },
+          "output_tokens": 0,
+          "output_tokens_details": { "reasoning_tokens": 0 },
+          "total_tokens": 200
+        }
+      }
+    },
+    {
+      "type": "response.in_progress",
+      "response": {
+        "id": "msg_synth_parallel_1",
+        "object": "response",
+        "model": "claude-test",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_item.added",
+      "output_index": 0,
+      "item": {
+        "type": "function_call",
+        "id": "toolu_b0_read",
+        "call_id": "toolu_b0_read",
+        "name": "read_file",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    },
+    {
+      "type": "response.output_item.added",
+      "output_index": 1,
+      "item": {
+        "type": "function_call",
+        "id": "toolu_b1_list",
+        "call_id": "toolu_b1_list",
+        "name": "list_files",
+        "arguments": "",
+        "status": "in_progress"
+      }
+    }
+  ],
+  "expected_invariants": {
+    "comment": "The replay assertions check complete per-block identity and arguments, reverse stop order and total usage; the expected event prefix documents initial Responses framing.",
+    "block_0_id": "toolu_b0_read",
+    "block_0_name": "read_file",
+    "block_0_assembled_args": "{\"path\":\"a.txt\"}",
+    "block_1_id": "toolu_b1_list",
+    "block_1_name": "list_files",
+    "block_1_assembled_args": "{\"dir\":\".\"}",
+    "stop_order": "b1_then_b0_OUT_OF_ORDER",
+    "expected_total_tokens": 235
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "description": "Synthetic Anthropic stream: two thinking segments, text accumulation and interleaved parallel tools with reverse stop order.",
+  "inbound_path": "/responses",
+  "inbound_method": "POST",
+  "model": "claude-test",
+  "body_rules": [
+    {
+      "name": "redirect",
+      "use": "redirect_to_anthropic_messages"
+    },
+    {
+      "name": "body_translate",
+      "use": "translate_responses_to_anthropic"
+    }
+  ],
+  "header_rules": [],
+  "stream_event_rules": [
+    {
+      "name": "stream_translate",
+      "use": "translate_anthropic_event_to_responses_event"
+    }
+  ],
+  "response_rules": [
+    {
+      "name": "response_passthrough",
+      "use": "response_passthrough_anthropic_v1_messages"
+    }
+  ],
+  "upstream": {
+    "via": "copilot_enterprise",
+    "via_endpoint": "anthropic_messages",
+    "shape": "anthropic_messages"
+  },
+  "request_body": {
+    "model": "claude-test",
+    "stream": true,
+    "max_output_tokens": 4096,
+    "input": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "input_text",
+            "text": "Read the sample README.md and list the sample directory in parallel."
+          }
+        ]
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "name": "read_file",
+        "description": "Read a file from the filesystem.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ]
+        }
+      },
+      {
+        "type": "function",
+        "name": "list_files",
+        "description": "List files in a directory.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dir": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "dir"
+          ]
+        }
+      }
+    ]
+  },
+  "request_headers": {
+    "content-type": "application/json",
+    "accept": "text/event-stream"
+  },
+  "source": {
+    "type": "synthetic",
+    "authoring": "Independently authored public protocol example; not a redacted capture.",
+    "sha256": "63d7fdecd918fe267b421381a3c2491da1ff5ea77a9ff9ba01acdafc115e748a",
+    "expected_client_sha256": "817ecd53c918580500323ff08f95c29e9a712cf62b402fab8dade30d2c712740"
+  }
+}

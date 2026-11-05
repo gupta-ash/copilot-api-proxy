@@ -1,0 +1,15 @@
+# Bun config — used by `bun run dev`, `bun test`.
+# This file intentionally minimal. Workspace settings live in package.json.
+
+[install]
+# Use stable lockfile format for reproducibility.
+exact = true
+
+[test]
+# Warm the transform registry before every test — see
+# tests/_registry_baseline.ts and its self-check,
+# tests/registry_baseline_installed.test.ts.
+# MUST stay under [test]. Above [install] it becomes a real top-level key
+# and loads into `bun run src/main.ts`; appended below [install] it becomes
+# `install.preload` and silently does nothing.
+preload = ["./tests/_registry_baseline.ts"]

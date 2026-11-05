@@ -1,0 +1,438 @@
+# Default routing and transformation policy for the five supported lanes.
+#
+# This file is not auto-loaded. Copy it to
+# ~/.local/share/copilot-proxy/config.yaml or set COPILOT_PROXY_CONFIG.
+# A missing config loads schema defaults with no routes; forwarding requires
+# an explicitly configured route.
+#
+# Endpoint families declare inbound paths and aliases. Upstream paths are
+# resolved against copilotBaseUrl(config.auth.account_type) at request time.
+#
+# Supported lanes:
+#   1. Claude Code -> Claude: native /v1/messages passthrough.
+#   2. Responses clients -> GPT-5 / GPT-6: native /responses passthrough.
+#   3. Chat clients -> GPT-4: native /chat/completions passthrough.
+#   4. Claude Code -> GPT-5 / GPT-6: Anthropic-to-Responses translation.
+#   5. Responses clients -> Claude: Responses-to-Anthropic translation.
+#
+# Billing-header stripping is a fixture demonstration, not production policy.
+# The Claude lane preserves system blocks; default_config_smoke.test.ts pins it.
+
+server:
+  port: 4143
+  host: 0.0.0.0
+#  host: 0.0.0.0
+
+# Endpoint families. Each defines (a) inbound paths the proxy listens
+# on, (b) HTTP methods. The first inbound path is canonical (used in logs +
+# findMatchingRoute lookup); the rest are aliases (all dispatch to the same
+# handler; handler normalizes to canonical BEFORE route-match).
+endpoints:
+  anthropic_messages:
+    inbound_paths: [/v1/messages]
+  openai_responses:
+    # /v1/responses is a transition alias for misconfigured Codex base_url
+    # (~/.codex/config.toml with base_url=".../v1" appends /v1 to /responses).
+    inbound_paths: [/responses, /v1/responses]
+  openai_chat_completions:
+    # /v1/chat/completions is OpenAI's official prefix. Some clients use it.
+    inbound_paths: [/chat/completions, /v1/chat/completions]
+  embeddings:
+    inbound_paths: [/embeddings, /v1/embeddings]
+  models:
+    inbound_paths: [/models, /v1/models]
+    methods: [GET]
+
+# Upstream services. Host is composed at runtime via
+# copilotBaseUrl(config.auth.account_type) — see src/auth/api-config.ts.
+# We deliberately do NOT carry a `base_url_template` field: copilotBaseUrl
+# correctly handles all 3 account types (individual → api.githubcopilot.com
+# WITHOUT subdomain prefix; business/enterprise → api.{accountType}.githubcopilot.com).
+upstreams:
+  copilot_enterprise:
+    paths:
+      anthropic_messages: /v1/messages # WITH /v1/ (Anthropic upstream convention)
+      openai_responses: /responses # NO /v1/  (Responses upstream convention)
+      openai_chat_completions: /chat/completions # NO /v1/
+      embeddings: /embeddings
+      models: /models
+
+logging:
+  #  level: verbose # off | on | raw | verbose
+  level: off # off | on | raw | verbose
+  trace_dir: ~/.local/share/copilot-proxy/traces
+  # Size warning only: exceeding this threshold does not stop trace writes.
+  warn_size_mb: 50
+  # Content-phase stall detector. Enabled by default via the schema default —
+  # this block is commented for discoverability only; uncomment to override.
+  # no_response_wait_ms = Case-1 pre-content window; response_wait_ms = Case-2
+  # post-content gap window (both in ms). no_response_wait_ms stays below the
+  # 1200000 (20-min) hard backstop. log_path defaults to the logs/ sibling of
+  # the crash marker (~/.local/share/copilot-proxy/logs/copilot-proxy.stalls.log).
+#  stall_detection:
+#    enabled: true
+#    no_response_wait_ms: 1140000
+#    response_wait_ms: 600000
+#    log_path: ~/.local/share/copilot-proxy/logs/copilot-proxy.stalls.log
+# Stream-incident log. Enabled by default via the schema default —
+# this block is commented for discoverability only; uncomment to override.
+# ORTHOGONAL to `level` above, deliberately: `level` is a volume knob for
+# routine trace detail, and a failure record is the thing you pay the level
+# for, so gating incidents behind `raw` leaves the fleet blind at the level it
+# actually runs. One JSONL line per stream whose outcome is NOT success —
+# never on success, so the file tracks the failure rate and not traffic.
+# max_bytes is a best-effort ROTATION THRESHOLD, NOT a disk guarantee: past it
+# the file rotates to a single `.1` sibling, which bounds disk to 2 x max_bytes
+# only while `rename` keeps working. Two mechanisms get past it, both spelled
+# out at INCIDENT_LOG_MAX_BYTES_DEFAULT in src/lib/incident-log.ts — a
+# persistently refused rename (measured: a DIRECTORY at the `.1` path) grows the
+# live file without limit, because dropping the record is the worse outcome, and
+# it warns on every such append; and one record larger than max_bytes still
+# lands whole. (`warn_size_mb` above is weaker still: it warns and continues,
+# with no rotation at all.)
+#  incident_log:
+#    enabled: true
+#    max_bytes: 8388608
+#    log_path: ~/.local/share/copilot-proxy/logs/copilot-proxy.incidents.log
+# Proxy-emitted SSE keep-alive comment (": keepalive"). Disabled by the schema
+# default. This block is commented for discoverability; enabling it is an
+# explicit operator choice. Existing config files are preserved on installation.
+# It REFUSES to run when stall_detection above is disabled, and warns: a
+# keep-alive with no detector behind it suppresses the client's own idle
+# watchdog while nothing bounds a dead stream.
+# interval_ms is the gap between comments and must sit well below the tighter
+# stall window (response_wait_ms) or the stall fires before the first tick and
+# the feature is inert — it warns about that too, with both numbers.
+# max_total_ms bounds how long ONE read may go on emitting; it is checked when
+# the next interval is armed, so emission stops within one interval_ms of it,
+# and the client's own watchdog still applies on top. At the ceiling the proxy
+# simply STOPS EMITTING — it never invents a new termination path, and the stall
+# detector remains the authority on a genuinely dead stream.
+#  keep_alive:
+#    enabled: true
+#    interval_ms: 30000
+#    require_first_byte: true
+#    max_total_ms: 300000
+
+auth:
+  # github_token_path:    # defaults to ~/.local/share/copilot-proxy/github_token
+  account_type: enterprise
+  vs_code_version: "1.95.0"
+
+transforms:
+  custom_dir: ~/.local/share/copilot-proxy/transforms
+
+# Anthropic-beta policy. Controls how the proxy rewrites the
+# beta-lane (Claude upstream: /v1/messages + /responses × ^claude-) anthropic-beta
+# header_rules at boot. `applyBetaPolicy` (src/lib/apply-beta-policy.ts) applies
+# this IN-MEMORY after config-load, so this section SUPERSEDES the per-lane beta
+# header_rules above (which document the denylist default for new installs).
+#
+#   policy: denylist (default) | allowlist | strip_all
+#     - denylist  — deny only known-bad tokens; pass everything else (new
+#                   upstream-accepted betas flow for free). Loud-fails if upstream
+#                   ever rejects a NEW beta CC sends — see docs/runbook.md
+#                   § "Recovering from a rejected anthropic-beta (400)".
+#     - allowlist — keep only `allow` tokens.
+#     - strip_all — remove anthropic-beta entirely (nuclear escape hatch).
+#
+# Override at startup WITHOUT editing this file:
+#   -BetaPolicy <mode> (start_proxy.ps1) / --beta-policy <mode> (start_proxy.sh)
+#   or COPILOT_PROXY_BETA_POLICY=<mode>.
+anthropic_beta:
+  policy: denylist
+  # Tokens the DENYLIST strips before forwarding (upstream rejects these).
+  deny:
+    - advisor-tool-2026-03-01
+  # Tokens the allowlist keeps when that policy is selected.
+  allow:
+    - claude-code-20250219
+    - oauth-2025-04-20
+    - context-management-2025-06-27
+    - prompt-caching-scope-2026-01-05
+    - interleaved-thinking-2025-05-14
+    - redact-thinking-2026-02-12
+    - effort-2025-11-24
+    - advanced-tool-use-2025-11-20
+  # Tokens the denylist/allowlist rule-sets ensure are present (union merge).
+  merge_append:
+    - advanced-tool-use-2025-11-20
+
+# Routes: declared-order, FIRST match wins per (method, path, model_pattern).
+# A request that does not match any route returns 404 `no_route`.
+#
+# All five lanes use symbolic `upstream.via` + `upstream.via_endpoint` refs.
+# resolveUpstreamUrl(config, route) composes the actual upstream URL.
+routes:
+  # ============================================================
+  # LANE 1 — CC → Claude (native passthrough)
+  # POST /v1/messages × ^claude-
+  # ============================================================
+  - match:
+      method: POST
+      path: /v1/messages
+      model_pattern: "^claude-"
+    body_rules:
+      # Normalize client-side Opus model spellings before upstream dispatch.
+      - name: rename_opus47_to_1m
+        use: rename_model
+        when: { model_glob: "claude-opus-4*" }
+        map:
+          "claude-opus-4-8": "claude-opus-4.8"
+          "claude-opus-4-7": "claude-opus-4.7"
+
+      # Optional effort clamp. Disabled; enable only for a model that needs it.
+      # - name: clamp_sonnet_to_high
+      #   use: clamp_effort
+      #   when: { model_glob: "claude-sonnet*" }
+      #   max_effort: high
+
+      # Haiku-4.5 doesn't accept output_config.
+      # Defensive strip in case a harness sends one anyway (would 400 upstream).
+      - name: strip_haiku_output_config
+        use: strip_body_field
+        when: { model_glob: "claude-haiku*" }
+        paths:
+          - output_config
+
+      # Strip WebSearch and WebFetch tool definitions by name. This proxy does
+      # not execute these tools; callers needing them must supply another route.
+      - name: strip_websearch_tool_def
+        use: strip_body_block
+        selector:
+          path: "tools[].name"
+          matcher: { equals: "WebSearch" }
+      - name: strip_webfetch_tool_def
+        use: strip_body_block
+        selector:
+          path: "tools[].name"
+          matcher: { equals: "WebFetch" }
+
+      # Production policy preserves billing-header system blocks unchanged.
+      # tests/integration/default_config_smoke.test.ts pins this distinction
+      # from the synthetic stripping demonstration.
+
+    header_rules:
+      # Static client-identification headers.
+      - name: inject_copilot_static_headers
+        use: inject_headers
+        force: false
+        set:
+          editor-version: "vscode/1.125.1"
+          editor-plugin-version: "copilot-chat/0.53.1"
+          copilot-integration-id: "vscode-chat"
+          x-github-api-version: "2026-07-01"
+          anthropic-version: "2023-06-01"
+
+      # Deny known-rejected beta tokens while preserving other client tokens.
+      # `context-1m-2025-08-07` is not denied.
+      #
+      # NOTE: this in-file rule-set is the documented default for NEW installs.
+      # At runtime `applyBetaPolicy` (src/lib/apply-beta-policy.ts) REWRITES the
+      # beta-lane rules from `anthropic_beta.policy` (or the
+      # COPILOT_PROXY_BETA_POLICY env / start-script -BetaPolicy flag), so the
+      # deployed config.yaml need not be edited to change policy.
+      - name: beta_policy_deny
+        use: strip_header_csv_token
+        header: anthropic-beta
+        deny:
+          - advisor-tool-2026-03-01
+
+      # Union merge preserves client betas and appends the required token.
+      - name: beta_policy_merge
+        use: merge_anthropic_betas
+        mode: union
+        append:
+          - advanced-tool-use-2025-11-20
+
+      # Copilot client fidelity — derive the x-initiator / x-interaction-type
+      # PAIR from request content, the way GitHub's own Copilot CLI (1.0.74-4)
+      # sends them: a last user message whose content array ENDS WITH a
+      # tool_result block yields `agent` + `conversation-agent`, anything else
+      # yields `user` + `conversation-user`. Both values come from ONE
+      # derivation inside the rule, so they cannot desync. Same class of
+      # client-mimicry as inject_copilot_static_headers above.
+      #
+      # NOTE: like the beta rules, this in-file entry is the documented default
+      # for NEW installs only — install_bundle.ps1 places config.yaml only if
+      # absent. At runtime `applyInitiatorHeaders`
+      # (src/lib/apply-initiator-headers.ts) re-injects this rule into both
+      # Anthropic lanes regardless of what the deployed config.yaml carries.
+      - name: derive_initiator_headers
+        use: derive_x_initiator
+        header_name: x-initiator
+        interaction_type_header_name: x-interaction-type
+
+      # Optional derive primitives. Enable only when the caller uses the
+      # corresponding request features. Initiator headers are already wired.
+      #
+      # - name: derive_copilot_vision_request
+      #   use: derive_copilot_vision_request
+      #
+      # derive_context_management_beta is opt-in but
+      # CONDITIONALLY REQUIRED. If any harness on this lane sends
+      # `context_management.edits` in the body (CC microcompact pathway),
+      # the request fails upstream with HTTP 400 unless the matching beta
+      # token is present. Wire this rule if your operators use that path.
+      # - name: derive_context_management_beta
+      #   use: derive_context_management_beta
+
+    response_rules: [] # Claude lane is passthrough — no redirect, no consumer needed.
+
+    upstream:
+      via: copilot_enterprise
+      via_endpoint: anthropic_messages
+      shape: anthropic_messages
+
+  # ============================================================
+  # LANE 2 — Codex → GPT-5 / GPT-6 families (native passthrough)
+  # POST /responses × ^gpt-[56]
+  # /responses is canonical; /v1/responses dispatches through the same handler.
+  # ^gpt-[56] admits gpt-5-mini (no dot after the 5) and the gpt-6 family;
+  # every such model in Copilot's catalog lists /responses (2026-09-27).
+  # ============================================================
+  - match:
+      method: POST
+      path: /responses
+      model_pattern: "^gpt-[56]"
+    body_rules:
+      # Copilot rejects `service_tier` with ANY value (400 unsupported_value);
+      # Codex sends "priority" whenever its fast tier is on.
+      - name: strip_service_tier
+        use: strip_body_field
+        paths:
+          - service_tier
+    header_rules:
+      - name: inject_copilot_static_headers
+        use: inject_headers
+        force: false
+        set:
+          editor-version: "vscode/1.125.1"
+          editor-plugin-version: "copilot-chat/0.53.1"
+          copilot-integration-id: "vscode-chat"
+          x-github-api-version: "2026-07-01"
+    response_rules:
+      - name: response_consume_openai_responses
+        use: response_passthrough_openai_responses
+    upstream:
+      via: copilot_enterprise
+      via_endpoint: openai_responses
+      shape: openai_responses
+
+  # ============================================================
+  # LANE 3 — Native /chat/completions for GPT-4.x only
+  # POST /chat/completions × ^gpt-4
+  # NOTE: gpt-5.x on /chat/completions is OUT OF SCOPE — gpt-5.x family
+  # ONLY accepts /responses upstream. gpt-5 on /chat/completions
+  # falls through to no_route 404 with a clear "no matching route" error.
+  # ============================================================
+  - match:
+      method: POST
+      path: /chat/completions
+      model_pattern: "^gpt-4"
+    body_rules: []
+    header_rules:
+      - name: inject_copilot_static_headers
+        use: inject_headers
+        force: false
+        set:
+          editor-version: "vscode/1.125.1"
+          editor-plugin-version: "copilot-chat/0.53.1"
+          copilot-integration-id: "vscode-chat"
+          x-github-api-version: "2026-07-01"
+    response_rules:
+      - name: response_consume_openai_chat
+        use: response_passthrough_openai_chat_completions
+    upstream:
+      via: copilot_enterprise
+      via_endpoint: openai_chat_completions
+      shape: openai_chat
+
+  # ============================================================
+  # LANE 4 — CC → GPT-5 / GPT-6 families cross-vendor: /v1/messages × ^gpt-[56]
+  # ^gpt-[56] admits gpt-5-mini and the gpt-6 family, the same pattern as Lane 2.
+  # The GPT-5 family routes to /responses upstream; every model
+  # ^gpt-[56] matches in Copilot's catalog lists /responses (2026-09-27).
+  # CC clients post Anthropic-shape bodies to /v1/messages always — the
+  # ^gpt-[56] model_pattern is what triggers cross-vendor translation.
+  # Body translation Anthropic-shape → Responses-shape; the
+  # redirect_to_responses marker sends it to upstream /responses.
+  # Coexists with Lane 1 on /v1/messages via disjoint model_pattern.
+  # ============================================================
+  - match:
+      method: POST
+      path: /v1/messages
+      model_pattern: "^gpt-[56]"
+    body_rules:
+      - name: gpt5_redirect_to_responses
+        use: redirect_to_responses
+      - name: translate_anthropic_to_responses_body
+        use: translate_anthropic_to_responses
+    stream_event_rules:
+      # Upstream emits Responses SSE; the client expects Anthropic SSE.
+      - name: stream_translate
+        use: translate_responses_event_to_anthropic_event
+    header_rules:
+      - name: inject_copilot_static_headers
+        use: inject_headers
+        force: false
+        set:
+          editor-version: "vscode/1.125.1"
+          editor-plugin-version: "copilot-chat/0.53.1"
+          copilot-integration-id: "vscode-chat"
+          x-github-api-version: "2026-07-01"
+    response_rules:
+      - name: response_consume_openai_responses_for_gpt5
+        use: response_passthrough_openai_responses
+    upstream:
+      via: copilot_enterprise
+      via_endpoint: openai_responses
+      shape: openai_responses
+
+  # ============================================================
+  # LANE 5 — Responses client -> Claude cross-vendor
+  # POST /responses × ^claude- (canonical inbound)
+  # Body translation Responses-shape → Anthropic-shape;
+  # marker redirects to /v1/messages upstream.
+  # ============================================================
+  - match:
+      method: POST
+      path: /responses
+      model_pattern: "^claude-"
+    body_rules:
+      - name: codex_claude_redirect
+        use: redirect_to_anthropic_messages
+      - name: translate_responses_to_anthropic_body
+        use: translate_responses_to_anthropic
+    stream_event_rules:
+      # Upstream emits Anthropic SSE; the client expects Responses SSE.
+      - name: stream_translate
+        use: translate_anthropic_event_to_responses_event
+    header_rules:
+      # Same anthropic-beta denylist policy as Lane 1. Runtime
+      # `applyBetaPolicy` rewrites these beta-lane rules from
+      # anthropic_beta.policy / the COPILOT_PROXY_BETA_POLICY env.
+      - name: beta_policy_deny
+        use: strip_header_csv_token
+        header: anthropic-beta
+        deny:
+          - advisor-tool-2026-03-01
+      - name: beta_policy_merge
+        use: merge_anthropic_betas
+        mode: union
+        append:
+          - advanced-tool-use-2025-11-20
+      # Same x-initiator / x-interaction-type pair as Lane 1 (Copilot client
+      # fidelity). Runtime `applyInitiatorHeaders` re-injects this rule here
+      # too, so the deployed config.yaml need not carry it.
+      - name: derive_initiator_headers
+        use: derive_x_initiator
+        header_name: x-initiator
+        interaction_type_header_name: x-interaction-type
+    response_rules:
+      - name: response_consume_anthropic_for_codex_claude
+        use: response_passthrough_anthropic_v1_messages
+    upstream:
+      via: copilot_enterprise
+      via_endpoint: anthropic_messages
+      shape: anthropic_messages

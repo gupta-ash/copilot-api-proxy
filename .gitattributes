@@ -1,0 +1,13 @@
+# Normalize source text to LF in both the committed tree and every checkout.
+# Shell operators and the committed release frontdoor must have stable bytes.
+* text=auto eol=lf
+
+# Fixture byte stability — replay tests assert byte-for-byte equality of
+# upstream.sse + expected_client.sse files. Disable any text normalization
+# git might apply on commit/checkout to prevent CRLF or BOM artifacts.
+#
+# MUST stay AFTER the `*` line above: .gitattributes is last-matching-line-wins
+# per attribute, so moving these up silently demotes them, and the failure
+# surfaces as a red fixture test -- the last place anyone looks for an EOL cause.
+tests/fixtures/stream-replay/** -text
+tests/fixtures/custom-rules/** -text

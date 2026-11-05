@@ -1,0 +1,213 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_public_fixture_reasoning_00000000000000000001","model":"gpt-5.5","status":"in_progress","output":[]}}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_public_fixture_reasoning_00000000000000000001","model":"gpt-5.5","status":"in_progress","output":[]}}
+
+event: response.reasoning_summary_part.added
+data: {"type":"response.reasoning_summary_part.added","output_index":0,"item_id":"rs_public_palette","summary_index":0,"part":{"type":"summary_text","text":""}}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","output_index":0,"item_id":"rs_public_palette","summary_index":0,"delta":"The sample has two colors. "}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","output_index":0,"item_id":"rs_public_palette","summary_index":0,"delta":"They are blue and gold."}
+
+event: response.reasoning_summary_text.done
+data: {"type":"response.reasoning_summary_text.done","output_index":0,"item_id":"rs_public_palette","summary_index":0,"text":"The sample has two colors. They are blue and gold."}
+
+event: response.reasoning_summary_part.done
+data: {"type":"response.reasoning_summary_part.done","output_index":0,"item_id":"rs_public_palette","summary_index":0,"part":{"type":"summary_text","text":"The sample has two colors. They are blue and gold."}}
+
+event: response.reasoning_summary_part.added
+data: {"type":"response.reasoning_summary_part.added","output_index":0,"item_id":"rs_public_palette","summary_index":1,"part":{"type":"summary_text","text":""}}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","output_index":0,"item_id":"rs_public_palette","summary_index":1,"delta":"Each label names one color. "}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","output_index":0,"item_id":"rs_public_palette","summary_index":1,"delta":"The labels are distinct."}
+
+event: response.reasoning_summary_text.done
+data: {"type":"response.reasoning_summary_text.done","output_index":0,"item_id":"rs_public_palette","summary_index":1,"text":"Each label names one color. The labels are distinct."}
+
+event: response.reasoning_summary_part.done
+data: {"type":"response.reasoning_summary_part.done","output_index":0,"item_id":"rs_public_palette","summary_index":1,"part":{"type":"summary_text","text":"Each label names one color. The labels are distinct."}}
+
+event: response.reasoning_summary_part.added
+data: {"type":"response.reasoning_summary_part.added","output_index":0,"item_id":"rs_public_palette","summary_index":2,"part":{"type":"summary_text","text":""}}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","output_index":0,"item_id":"rs_public_palette","summary_index":2,"delta":"List the labels in order. "}
+
+event: response.reasoning_summary_text.delta
+data: {"type":"response.reasoning_summary_text.delta","output_index":0,"item_id":"rs_public_palette","summary_index":2,"delta":"No outside information is needed."}
+
+event: response.reasoning_summary_text.done
+data: {"type":"response.reasoning_summary_text.done","output_index":0,"item_id":"rs_public_palette","summary_index":2,"text":"List the labels in order. No outside information is needed."}
+
+event: response.reasoning_summary_part.done
+data: {"type":"response.reasoning_summary_part.done","output_index":0,"item_id":"rs_public_palette","summary_index":2,"part":{"type":"summary_text","text":"List the labels in order. No outside information is needed."}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","output_index":1,"item":{"id":"msg_public_palette_output_00000001","type":"message","role":"assistant","status":"in_progress","content":[]}}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","part":{"type":"output_text","text":"","annotations":[]}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 01: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 02: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 03: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 04: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 05: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 06: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 07: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 08: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 09: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 10: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 11: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 12: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 13: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 14: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 15: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 16: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 17: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 18: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 19: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 20: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 21: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 22: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 23: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 24: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 25: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 26: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 27: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 28: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 29: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 30: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 31: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 32: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 33: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 34: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 35: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 36: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 37: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 38: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 39: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 40: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 41: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 42: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 43: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 44: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 45: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 46: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 47: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","delta":"Sample 48: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","text":"Sample 01: blue and gold are the two labels in this fictional palette.\nSample 02: blue and gold are the two labels in this fictional palette.\nSample 03: blue and gold are the two labels in this fictional palette.\nSample 04: blue and gold are the two labels in this fictional palette.\nSample 05: blue and gold are the two labels in this fictional palette.\nSample 06: blue and gold are the two labels in this fictional palette.\nSample 07: blue and gold are the two labels in this fictional palette.\nSample 08: blue and gold are the two labels in this fictional palette.\nSample 09: blue and gold are the two labels in this fictional palette.\nSample 10: blue and gold are the two labels in this fictional palette.\nSample 11: blue and gold are the two labels in this fictional palette.\nSample 12: blue and gold are the two labels in this fictional palette.\nSample 13: blue and gold are the two labels in this fictional palette.\nSample 14: blue and gold are the two labels in this fictional palette.\nSample 15: blue and gold are the two labels in this fictional palette.\nSample 16: blue and gold are the two labels in this fictional palette.\nSample 17: blue and gold are the two labels in this fictional palette.\nSample 18: blue and gold are the two labels in this fictional palette.\nSample 19: blue and gold are the two labels in this fictional palette.\nSample 20: blue and gold are the two labels in this fictional palette.\nSample 21: blue and gold are the two labels in this fictional palette.\nSample 22: blue and gold are the two labels in this fictional palette.\nSample 23: blue and gold are the two labels in this fictional palette.\nSample 24: blue and gold are the two labels in this fictional palette.\nSample 25: blue and gold are the two labels in this fictional palette.\nSample 26: blue and gold are the two labels in this fictional palette.\nSample 27: blue and gold are the two labels in this fictional palette.\nSample 28: blue and gold are the two labels in this fictional palette.\nSample 29: blue and gold are the two labels in this fictional palette.\nSample 30: blue and gold are the two labels in this fictional palette.\nSample 31: blue and gold are the two labels in this fictional palette.\nSample 32: blue and gold are the two labels in this fictional palette.\nSample 33: blue and gold are the two labels in this fictional palette.\nSample 34: blue and gold are the two labels in this fictional palette.\nSample 35: blue and gold are the two labels in this fictional palette.\nSample 36: blue and gold are the two labels in this fictional palette.\nSample 37: blue and gold are the two labels in this fictional palette.\nSample 38: blue and gold are the two labels in this fictional palette.\nSample 39: blue and gold are the two labels in this fictional palette.\nSample 40: blue and gold are the two labels in this fictional palette.\nSample 41: blue and gold are the two labels in this fictional palette.\nSample 42: blue and gold are the two labels in this fictional palette.\nSample 43: blue and gold are the two labels in this fictional palette.\nSample 44: blue and gold are the two labels in this fictional palette.\nSample 45: blue and gold are the two labels in this fictional palette.\nSample 46: blue and gold are the two labels in this fictional palette.\nSample 47: blue and gold are the two labels in this fictional palette.\nSample 48: blue and gold are the two labels in this fictional palette.\n"}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","output_index":1,"content_index":0,"item_id":"msg_public_palette_output_00000001","part":{"type":"output_text","text":"Sample 01: blue and gold are the two labels in this fictional palette.\nSample 02: blue and gold are the two labels in this fictional palette.\nSample 03: blue and gold are the two labels in this fictional palette.\nSample 04: blue and gold are the two labels in this fictional palette.\nSample 05: blue and gold are the two labels in this fictional palette.\nSample 06: blue and gold are the two labels in this fictional palette.\nSample 07: blue and gold are the two labels in this fictional palette.\nSample 08: blue and gold are the two labels in this fictional palette.\nSample 09: blue and gold are the two labels in this fictional palette.\nSample 10: blue and gold are the two labels in this fictional palette.\nSample 11: blue and gold are the two labels in this fictional palette.\nSample 12: blue and gold are the two labels in this fictional palette.\nSample 13: blue and gold are the two labels in this fictional palette.\nSample 14: blue and gold are the two labels in this fictional palette.\nSample 15: blue and gold are the two labels in this fictional palette.\nSample 16: blue and gold are the two labels in this fictional palette.\nSample 17: blue and gold are the two labels in this fictional palette.\nSample 18: blue and gold are the two labels in this fictional palette.\nSample 19: blue and gold are the two labels in this fictional palette.\nSample 20: blue and gold are the two labels in this fictional palette.\nSample 21: blue and gold are the two labels in this fictional palette.\nSample 22: blue and gold are the two labels in this fictional palette.\nSample 23: blue and gold are the two labels in this fictional palette.\nSample 24: blue and gold are the two labels in this fictional palette.\nSample 25: blue and gold are the two labels in this fictional palette.\nSample 26: blue and gold are the two labels in this fictional palette.\nSample 27: blue and gold are the two labels in this fictional palette.\nSample 28: blue and gold are the two labels in this fictional palette.\nSample 29: blue and gold are the two labels in this fictional palette.\nSample 30: blue and gold are the two labels in this fictional palette.\nSample 31: blue and gold are the two labels in this fictional palette.\nSample 32: blue and gold are the two labels in this fictional palette.\nSample 33: blue and gold are the two labels in this fictional palette.\nSample 34: blue and gold are the two labels in this fictional palette.\nSample 35: blue and gold are the two labels in this fictional palette.\nSample 36: blue and gold are the two labels in this fictional palette.\nSample 37: blue and gold are the two labels in this fictional palette.\nSample 38: blue and gold are the two labels in this fictional palette.\nSample 39: blue and gold are the two labels in this fictional palette.\nSample 40: blue and gold are the two labels in this fictional palette.\nSample 41: blue and gold are the two labels in this fictional palette.\nSample 42: blue and gold are the two labels in this fictional palette.\nSample 43: blue and gold are the two labels in this fictional palette.\nSample 44: blue and gold are the two labels in this fictional palette.\nSample 45: blue and gold are the two labels in this fictional palette.\nSample 46: blue and gold are the two labels in this fictional palette.\nSample 47: blue and gold are the two labels in this fictional palette.\nSample 48: blue and gold are the two labels in this fictional palette.\n","annotations":[]}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","output_index":1,"item":{"id":"msg_public_palette_output_00000001","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Sample 01: blue and gold are the two labels in this fictional palette.\nSample 02: blue and gold are the two labels in this fictional palette.\nSample 03: blue and gold are the two labels in this fictional palette.\nSample 04: blue and gold are the two labels in this fictional palette.\nSample 05: blue and gold are the two labels in this fictional palette.\nSample 06: blue and gold are the two labels in this fictional palette.\nSample 07: blue and gold are the two labels in this fictional palette.\nSample 08: blue and gold are the two labels in this fictional palette.\nSample 09: blue and gold are the two labels in this fictional palette.\nSample 10: blue and gold are the two labels in this fictional palette.\nSample 11: blue and gold are the two labels in this fictional palette.\nSample 12: blue and gold are the two labels in this fictional palette.\nSample 13: blue and gold are the two labels in this fictional palette.\nSample 14: blue and gold are the two labels in this fictional palette.\nSample 15: blue and gold are the two labels in this fictional palette.\nSample 16: blue and gold are the two labels in this fictional palette.\nSample 17: blue and gold are the two labels in this fictional palette.\nSample 18: blue and gold are the two labels in this fictional palette.\nSample 19: blue and gold are the two labels in this fictional palette.\nSample 20: blue and gold are the two labels in this fictional palette.\nSample 21: blue and gold are the two labels in this fictional palette.\nSample 22: blue and gold are the two labels in this fictional palette.\nSample 23: blue and gold are the two labels in this fictional palette.\nSample 24: blue and gold are the two labels in this fictional palette.\nSample 25: blue and gold are the two labels in this fictional palette.\nSample 26: blue and gold are the two labels in this fictional palette.\nSample 27: blue and gold are the two labels in this fictional palette.\nSample 28: blue and gold are the two labels in this fictional palette.\nSample 29: blue and gold are the two labels in this fictional palette.\nSample 30: blue and gold are the two labels in this fictional palette.\nSample 31: blue and gold are the two labels in this fictional palette.\nSample 32: blue and gold are the two labels in this fictional palette.\nSample 33: blue and gold are the two labels in this fictional palette.\nSample 34: blue and gold are the two labels in this fictional palette.\nSample 35: blue and gold are the two labels in this fictional palette.\nSample 36: blue and gold are the two labels in this fictional palette.\nSample 37: blue and gold are the two labels in this fictional palette.\nSample 38: blue and gold are the two labels in this fictional palette.\nSample 39: blue and gold are the two labels in this fictional palette.\nSample 40: blue and gold are the two labels in this fictional palette.\nSample 41: blue and gold are the two labels in this fictional palette.\nSample 42: blue and gold are the two labels in this fictional palette.\nSample 43: blue and gold are the two labels in this fictional palette.\nSample 44: blue and gold are the two labels in this fictional palette.\nSample 45: blue and gold are the two labels in this fictional palette.\nSample 46: blue and gold are the two labels in this fictional palette.\nSample 47: blue and gold are the two labels in this fictional palette.\nSample 48: blue and gold are the two labels in this fictional palette.\n","annotations":[]}]}}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_public_fixture_reasoning_00000000000000000001","model":"gpt-5.5","status":"completed","output":[{"id":"msg_public_palette_output_00000001","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Sample 01: blue and gold are the two labels in this fictional palette.\nSample 02: blue and gold are the two labels in this fictional palette.\nSample 03: blue and gold are the two labels in this fictional palette.\nSample 04: blue and gold are the two labels in this fictional palette.\nSample 05: blue and gold are the two labels in this fictional palette.\nSample 06: blue and gold are the two labels in this fictional palette.\nSample 07: blue and gold are the two labels in this fictional palette.\nSample 08: blue and gold are the two labels in this fictional palette.\nSample 09: blue and gold are the two labels in this fictional palette.\nSample 10: blue and gold are the two labels in this fictional palette.\nSample 11: blue and gold are the two labels in this fictional palette.\nSample 12: blue and gold are the two labels in this fictional palette.\nSample 13: blue and gold are the two labels in this fictional palette.\nSample 14: blue and gold are the two labels in this fictional palette.\nSample 15: blue and gold are the two labels in this fictional palette.\nSample 16: blue and gold are the two labels in this fictional palette.\nSample 17: blue and gold are the two labels in this fictional palette.\nSample 18: blue and gold are the two labels in this fictional palette.\nSample 19: blue and gold are the two labels in this fictional palette.\nSample 20: blue and gold are the two labels in this fictional palette.\nSample 21: blue and gold are the two labels in this fictional palette.\nSample 22: blue and gold are the two labels in this fictional palette.\nSample 23: blue and gold are the two labels in this fictional palette.\nSample 24: blue and gold are the two labels in this fictional palette.\nSample 25: blue and gold are the two labels in this fictional palette.\nSample 26: blue and gold are the two labels in this fictional palette.\nSample 27: blue and gold are the two labels in this fictional palette.\nSample 28: blue and gold are the two labels in this fictional palette.\nSample 29: blue and gold are the two labels in this fictional palette.\nSample 30: blue and gold are the two labels in this fictional palette.\nSample 31: blue and gold are the two labels in this fictional palette.\nSample 32: blue and gold are the two labels in this fictional palette.\nSample 33: blue and gold are the two labels in this fictional palette.\nSample 34: blue and gold are the two labels in this fictional palette.\nSample 35: blue and gold are the two labels in this fictional palette.\nSample 36: blue and gold are the two labels in this fictional palette.\nSample 37: blue and gold are the two labels in this fictional palette.\nSample 38: blue and gold are the two labels in this fictional palette.\nSample 39: blue and gold are the two labels in this fictional palette.\nSample 40: blue and gold are the two labels in this fictional palette.\nSample 41: blue and gold are the two labels in this fictional palette.\nSample 42: blue and gold are the two labels in this fictional palette.\nSample 43: blue and gold are the two labels in this fictional palette.\nSample 44: blue and gold are the two labels in this fictional palette.\nSample 45: blue and gold are the two labels in this fictional palette.\nSample 46: blue and gold are the two labels in this fictional palette.\nSample 47: blue and gold are the two labels in this fictional palette.\nSample 48: blue and gold are the two labels in this fictional palette.\n","annotations":[]}]}],"usage":{"input_tokens":24,"output_tokens":96,"total_tokens":120}}}
+

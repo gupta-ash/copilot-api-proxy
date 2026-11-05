@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "component": "copilot-proxy",
+  "files": [
+    {
+      "source": "install.ps1",
+      "destination": "install.ps1"
+    },
+    {
+      "source": "deploy/release-files.json",
+      "destination": "deploy/release-files.json"
+    },
+    {
+      "source": "LICENSE",
+      "destination": "LICENSE"
+    },
+    {
+      "source": "NOTICE",
+      "destination": "NOTICE"
+    },
+    {
+      "source": "deploy/install_bundle.ps1",
+      "destination": "scripts/install_bundle.ps1"
+    },
+    {
+      "source": "deploy/install_local.ps1",
+      "destination": "scripts/install_local.ps1"
+    },
+    {
+      "source": "deploy/install_service.ps1",
+      "destination": "scripts/install_service.ps1"
+    },
+    {
+      "source": "deploy/proxy_log_off.ps1",
+      "destination": "scripts/proxy_log_off.ps1"
+    },
+    {
+      "source": "deploy/proxy_log_off.sh",
+      "destination": "scripts/proxy_log_off.sh"
+    },
+    {
+      "source": "deploy/proxy_log_on.ps1",
+      "destination": "scripts/proxy_log_on.ps1"
+    },
+    {
+      "source": "deploy/proxy_log_on.sh",
+      "destination": "scripts/proxy_log_on.sh"
+    },
+    {
+      "source": "deploy/start_proxy.ps1",
+      "destination": "scripts/start_proxy.ps1"
+    },
+    {
+      "source": "deploy/start_proxy.sh",
+      "destination": "scripts/start_proxy.sh"
+    },
+    {
+      "source": "deploy/start_proxy_no_rollback.ps1",
+      "destination": "scripts/start_proxy_no_rollback.ps1"
+    },
+    {
+      "source": "deploy/start_proxy_no_rollback.sh",
+      "destination": "scripts/start_proxy_no_rollback.sh"
+    },
+    {
+      "source": "deploy/status_proxy.ps1",
+      "destination": "scripts/status_proxy.ps1"
+    },
+    {
+      "source": "deploy/status_proxy.sh",
+      "destination": "scripts/status_proxy.sh"
+    },
+    {
+      "source": "deploy/stop_proxy.ps1",
+      "destination": "scripts/stop_proxy.ps1"
+    },
+    {
+      "source": "deploy/stop_proxy.sh",
+      "destination": "scripts/stop_proxy.sh"
+    },
+    {
+      "source": "deploy/uninstall_service.ps1",
+      "destination": "scripts/uninstall_service.ps1"
+    },
+    {
+      "source": "config/default.yaml",
+      "destination": "config/default.yaml"
+    },
+    {
+      "source": "package.json",
+      "destination": "package.json"
+    },
+    {
+      "source": "bun.lock",
+      "destination": "bun.lock"
+    }
+  ],
+  "retired_files": [],
+  "generated_trees": [
+    "dist",
+    "node_modules"
+  ],
+  "generated_files": [
+    "VERSION.txt"
+  ]
+}

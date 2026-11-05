@@ -1,0 +1,18 @@
+data: {"type":"response.created","response":{"id":"resp_public_native_palette_00000001","object":"response","model":"gpt-5.5","status":"in_progress","output":[],"created_at":1700000000}}
+
+data: {"type":"response.in_progress","response":{"id":"resp_public_native_palette_00000001","object":"response","model":"gpt-5.5","status":"in_progress","output":[],"created_at":1700000000}}
+
+data: {"type":"response.output_item.added","output_index":0,"item":{"id":"msg_public_native_palette_00000001","type":"message","role":"assistant","status":"in_progress","content":[]}}
+
+data: {"type":"response.output_text.delta","output_index":0,"content_index":0,"item_id":"msg_public_native_palette_00000001","delta":"Blue"}
+
+data: {"type":"response.output_text.delta","output_index":0,"content_index":0,"item_id":"msg_public_native_palette_00000001","delta":" and"}
+
+data: {"type":"response.output_text.delta","output_index":0,"content_index":0,"item_id":"msg_public_native_palette_00000001","delta":" gold."}
+
+data: {"type":"response.output_text.done","output_index":0,"content_index":0,"item_id":"msg_public_native_palette_00000001","text":"Blue and gold."}
+
+data: {"type":"response.output_item.done","output_index":0,"item":{"id":"msg_public_native_palette_00000001","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Blue and gold."}]}}
+
+data: {"type":"response.completed","response":{"id":"resp_public_native_palette_00000001","object":"response","model":"gpt-5.5","status":"completed","output":[{"id":"msg_public_native_palette_00000001","type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Blue and gold."}]}],"usage":{"input_tokens":12,"output_tokens":4,"total_tokens":16},"created_at":1700000000}}
+

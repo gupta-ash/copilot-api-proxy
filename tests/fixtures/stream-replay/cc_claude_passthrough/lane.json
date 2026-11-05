@@ -1,0 +1,37 @@
+{
+  "description": "Synthetic Anthropic native stream: text lifecycle, usage and backend-style underscore message identifier.",
+  "inbound_path": "/v1/messages",
+  "inbound_method": "POST",
+  "model": "claude-opus-4.7",
+  "body_rules": [],
+  "header_rules": [],
+  "stream_event_rules": [],
+  "response_rules": [],
+  "upstream": {
+    "via": "copilot_enterprise",
+    "via_endpoint": "anthropic_messages",
+    "shape": "anthropic_messages"
+  },
+  "request_body": {
+    "model": "claude-opus-4.7",
+    "stream": true,
+    "max_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "Name the two colors in the sample palette."
+      }
+    ]
+  },
+  "request_headers": {
+    "content-type": "application/json",
+    "accept": "text/event-stream",
+    "anthropic-version": "2023-06-01"
+  },
+  "source": {
+    "type": "synthetic",
+    "authoring": "Independently authored public protocol example; not a redacted capture.",
+    "sha256": "8f29b7761a7f4b8e324bb1b5b35e8fddb228decfb050345b7673f37607f6eae0",
+    "expected_client_sha256": "8f29b7761a7f4b8e324bb1b5b35e8fddb228decfb050345b7673f37607f6eae0"
+  }
+}

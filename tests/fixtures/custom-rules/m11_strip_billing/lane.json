@@ -1,0 +1,44 @@
+{
+  "description": "Synthetic custom-rule scenario: opt-in billing-header stripping on the Claude messages route.",
+  "inbound_path": "/v1/messages",
+  "inbound_method": "POST",
+  "model": "claude-sonnet-4-6",
+  "body_rules": [
+    {
+      "name": "custom_strip_billing",
+      "use": "strip_billing_header_sample"
+    }
+  ],
+  "header_rules": [],
+  "stream_event_rules": [],
+  "response_rules": [
+    {
+      "name": "consume_anthropic",
+      "use": "response_passthrough_anthropic_v1_messages"
+    }
+  ],
+  "upstream": {
+    "via": "copilot_enterprise",
+    "via_endpoint": "anthropic_messages",
+    "shape": "anthropic_messages"
+  },
+  "request_body": {
+    "model": "claude-sonnet-4-6",
+    "system": [
+      { "type": "text", "text": "You are Claude." },
+      {
+        "type": "text",
+        "text": "x-anthropic-billing-header: synthetic-public-example"
+      }
+    ],
+    "messages": [{ "role": "user", "content": "hello" }]
+  },
+  "request_headers": {
+    "content-type": "application/json",
+    "authorization": "Bearer test-token"
+  },
+  "source": {
+    "type": "synthetic",
+    "authoring": "Independently authored public request and custom-rule configuration."
+  }
+}

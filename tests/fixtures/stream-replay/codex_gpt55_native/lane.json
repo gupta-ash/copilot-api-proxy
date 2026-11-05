@@ -1,0 +1,34 @@
+{
+  "description": "Synthetic Responses native stream: complete text lifecycle, stable identifiers and usage.",
+  "inbound_path": "/responses",
+  "inbound_method": "POST",
+  "model": "gpt-5.5",
+  "body_rules": [],
+  "header_rules": [],
+  "stream_event_rules": [],
+  "response_rules": [
+    {
+      "name": "response_consume_openai_responses",
+      "use": "response_passthrough_openai_responses"
+    }
+  ],
+  "upstream": {
+    "via": "copilot_enterprise",
+    "via_endpoint": "openai_responses",
+    "shape": "openai_responses"
+  },
+  "request_body": {
+    "model": "gpt-5.5",
+    "input": "Name the two colors in the sample palette: blue and gold.",
+    "stream": true
+  },
+  "request_headers": {
+    "content-type": "application/json"
+  },
+  "source": {
+    "type": "synthetic",
+    "authoring": "Independently authored public protocol example; not a redacted capture.",
+    "sha256": "417fab0d4f02395501e7f689d095edb9d357d44cdf3750501ee672ee2a536106",
+    "expected_client_sha256": "417fab0d4f02395501e7f689d095edb9d357d44cdf3750501ee672ee2a536106"
+  }
+}
