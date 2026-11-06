@@ -58,6 +58,12 @@ try {
     $installedPath=Join-Path $meta 'installed.json'
     $installed=Read-InstallJson $installedPath
     if ($installed.parameters.Port -ne 49173 -or -not $installed.last_code_change_utc) { throw 'Resolved coordinates/code-change metadata missing.' }
+    $validReceiptBytes=[IO.File]::ReadAllBytes($installedPath)
+    try {
+        $installed.last_code_change_utc='2026-11-06T14:00:00+08:00'
+        [IO.File]::WriteAllText($installedPath,($installed | ConvertTo-Json -Depth 20))
+        Refuses @{Version=$package.version;Mode='Verify';UserRoot=$homeFixture} 'Code change timestamp must be UTC'
+    } finally { [IO.File]::WriteAllBytes($installedPath,$validReceiptBytes) }
     $seed=[IO.File]::ReadAllText((Join-Path $app 'config.yaml'))
     if ($seed -notmatch '(?m)^\s*host:\s*127\.0\.0\.1' -or $seed -notmatch '(?m)^\s*port:\s*49173') { throw 'Fresh seed did not use selected loopback port.' }
     foreach ($name in @('github_token','user.db','user.db-wal','user.db-shm','audit.log','sessions.json','stable-id')) { [IO.File]::WriteAllText((Join-Path $app $name),('synthetic-preserve-'+$name)) }

@@ -102,7 +102,10 @@ function Assert-Receipt($Receipt,[string]$HomeRoot,[string]$CodeRoot,[string]$Me
     Assert-Fields $Receipt.parameters @('UserRoot','InstallRoot','NodeExe','Port')
     if ($Receipt.parameters.UserRoot -cne $HomeRoot -or $Receipt.parameters.InstallRoot -cne $CodeRoot -or ($Receipt.parameters.Port -isnot [int] -and $Receipt.parameters.Port -isnot [long]) -or $Receipt.parameters.Port -lt 1 -or $Receipt.parameters.Port -gt 65535) { throw 'Retained account/root/port mismatch.' }
     if (@($Receipt.configuration_paths).Count -ne 0 -or @($Receipt.held_paths).Count -ne 0) { throw 'Proxy receipt cannot claim unmanaged config or held files as installed.' }
-    if ($null -ne $Receipt.last_code_change_utc) { $stamp=[DateTimeOffset]::Parse($Receipt.last_code_change_utc); if ($stamp.Offset -ne [TimeSpan]::Zero) { throw 'Code change timestamp must be UTC.' } }
+    if ($null -ne $Receipt.last_code_change_utc) {
+        $stamp=if ($Receipt.last_code_change_utc -is [DateTime]) { [DateTimeOffset]::new($Receipt.last_code_change_utc) } else { [DateTimeOffset]::Parse($Receipt.last_code_change_utc) }
+        if ($stamp.Offset -ne [TimeSpan]::Zero) { throw 'Code change timestamp must be UTC.' }
+    }
     $seen=@{}
     foreach ($row in $Receipt.files) {
         Assert-Fields $row @('path','sha256','mode')
