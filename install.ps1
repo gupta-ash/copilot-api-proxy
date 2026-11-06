@@ -2,12 +2,11 @@
 # Download this committed script from the selected Release; never pipe it into iex.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory=$true)][string]$Version,
-    [Parameter(Mandatory=$true)][string]$WorkRoot,
+    [string]$Version = '', [string]$WorkRoot = '',
     [ValidateSet('Check','Install','Verify')][string]$Mode = 'Install',
-    [string]$UserRoot = '', [string]$InstallRoot = '', [string]$NodeExe = '',
+    [string]$InstallRoot = '', [string]$NodeExe = '',
     [ValidateRange(1,65535)][int]$Port,
-    [switch]$AdoptExisting, [switch]$Activate
+    [switch]$Activate
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -121,61 +120,8 @@ function Admit-ReleasePayload($Zip,$Rows,$Envelope,$Source,[string]$Commit,[stri
         $retired[$name]=$true
     }
 }
-try {
-    if ($Version -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' -or $Version -ieq 'latest') { throw 'Version must be an exact release tag, not latest.' }
-    $actualHome = [Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile)
-    if (-not $UserRoot) { $UserRoot = $actualHome }
-    $UserRoot = Full-Path $UserRoot
-    if ($UserRoot -ine (Full-Path $actualHome)) { throw 'UserRoot must be the invoking account profile.' }
-    $WorkRoot = Full-Path $WorkRoot
-    Unlinked $UserRoot; Unlinked $WorkRoot
-    $metadata = Join-Path $UserRoot '.agents/installations/copilot-api-proxy'
-    $installedPath = Join-Path $metadata 'installed.json'
-    Unlinked $installedPath
-    $prior = if (Test-Path -LiteralPath $installedPath -PathType Leaf) { Get-Content -LiteralPath $installedPath -Raw | ConvertFrom-Json } else { $null }
-    $selectedRoot = $InstallRoot
-    if (-not $selectedRoot -and $prior) { $selectedRoot = [string]$prior.parameters.InstallRoot }
-    if (-not $selectedRoot) {
-        $record = Join-Path $UserRoot '.local/share/copilot-proxy/install-dir.txt'
-        Unlinked $record
-        if (Test-Path -LiteralPath $record -PathType Leaf) { $selectedRoot = [IO.File]::ReadAllText($record).Trim() }
-        else { $selectedRoot = Join-Path $UserRoot '.agents/services/copilot-proxy' }
-    }
-    $selectedRoot = Full-Path $selectedRoot
-    $protectedRoots=@($selectedRoot,(Full-Path (Join-Path $UserRoot '.local/share/copilot-proxy')),(Full-Path $metadata))
-    if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.git')) { $protectedRoots += (Full-Path $PSScriptRoot) }
-    foreach ($protected in $protectedRoots) {
-        if (Overlaps $WorkRoot $protected) { throw 'WorkRoot must be outside source, installation and private state roots.' }
-    }
-    if (-not (Test-Path -LiteralPath $WorkRoot -PathType Container)) { throw 'WorkRoot must already exist and be owned by this account.' }
-    $drive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($WorkRoot))
-    if (-not $drive.IsReady -or $drive.DriveType -notin @([IO.DriveType]::Fixed,[IO.DriveType]::Removable,[IO.DriveType]::Ram)) { throw 'WorkRoot must be available local storage, not a mapped network drive.' }
-    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-    $owner = (Get-Acl -LiteralPath $WorkRoot).GetOwner([Security.Principal.SecurityIdentifier]).Value
-    if ($owner -cne $sid) { throw 'WorkRoot is not owned by the invoking account.' }
-    if (Test-Path -LiteralPath $metadata -PathType Container) {
-        if ((Get-Acl -LiteralPath $metadata).GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $sid) { throw 'Retained installation metadata is not owned by the invoking account.' }
-    }
-    if ($Mode -eq 'Verify') {
-        if (-not $prior) { throw 'Missing retained installation receipt; Verify never downloads or repairs.' }
-        if ($AdoptExisting -or $Activate) { throw 'Verify is read-only and refuses adoption/activation.' }
-        $backend = Join-Path $metadata 'install_local.ps1'
-        Unlinked $backend
-        $binding = @($prior.files | Where-Object { $_.path -ceq $backend })
-        if ($binding.Count -ne 1 -or (Hash $backend) -cne $binding[0].sha256) { throw 'Retained verifier is missing or changed.' }
-        $frontdoorBinding=@($prior.files | Where-Object { $_.path -ceq (Join-Path $metadata 'install.ps1') })
-        if ($frontdoorBinding.Count -ne 1 -or (Hash $PSCommandPath) -cne $frontdoorBinding[0].sha256) { throw 'Executing frontdoor differs from the retained installed release.' }
-        $backendArgs = @{}; foreach ($key in $PSBoundParameters.Keys) { $backendArgs[$key] = $PSBoundParameters[$key] }
-        $backendArgs.UserRoot = $UserRoot; $backendArgs.WorkRoot = $WorkRoot
-        & $backend @backendArgs
-        if ($LASTEXITCODE -ne 0) { throw 'Offline verification failed.' }
-        exit 0
-    }
-    # Child downloads, extraction, caches and temporary files remain in WorkRoot.
-    $operation = Join-Path $WorkRoot ('operation-'+[guid]::NewGuid().ToString('N'))
-    New-Item -ItemType Directory -Path $operation | Out-Null
-    foreach ($key in @('TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR','npm_config_cache','BUN_INSTALL_CACHE_DIR')) { [Environment]::SetEnvironmentVariable($key,$operation,'Process') }
-    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+function Receive-Release([string]$Version,[string]$Operation) {
+    if ($Version -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' -or $Version -ieq 'latest') { throw 'An exact release tag is required for source admission.' }
     $escaped = [Uri]::EscapeDataString($Version)
     $release = Api ('releases/tags/'+$escaped)
     if ($release.tag_name -cne $Version -or $release.draft) { throw 'Release tag identity/state mismatch.' }
@@ -193,14 +139,8 @@ try {
     $sourceBytes=[Convert]::FromBase64String($committedFrontdoor.content)
     $sourceHasher=[Security.Cryptography.SHA256]::Create()
     try { $sourceDigest=[BitConverter]::ToString($sourceHasher.ComputeHash($sourceBytes)).Replace('-','').ToLowerInvariant() } finally { $sourceHasher.Dispose() }
-    if ((Hash $PSCommandPath) -cne $sourceDigest) { throw 'Executing frontdoor differs from the selected commit. Download that release script explicitly.' }
     $sourceRelease=Source-Release $target.sha
     if ((Git-BlobDigest $sourceBytes) -cne $sourceRelease.destinations['install.ps1'].sha) { throw 'Executing frontdoor is not in the selected commit tree.' }
-    if ($prior -and $prior.source_commit -cne $target.sha) {
-        if ($prior.source_commit -cnotmatch '^[0-9a-f]{40}$') { throw 'Invalid retained source OID.' }
-        $comparison=Api ('compare/'+$prior.source_commit+'...'+$target.sha)
-        if ($comparison.status -cne 'ahead' -or $comparison.base_commit.sha -cne $prior.source_commit) { throw 'Downgrade/divergent source refused; upgrades must descend from the retained installed source.' }
-    }
     $assetName = 'copilot-proxy-'+$Version+'.zip'
     foreach ($name in @($assetName,($assetName+'.json'),'install.ps1')) {
         $asset = @($release.assets | Where-Object { $_.name -ceq $name })
@@ -238,13 +178,172 @@ try {
             if ($digest -cne $rows[$name].sha256) { throw "ZIP member digest mismatch: $name" }
         }
         Admit-ReleasePayload $zip $rows $envelope $sourceRelease $target.sha $Version
-        if ($sourceDigest -cne $rows['install.ps1'].sha256 -or (Hash (Join-Path $operation 'install.ps1')) -cne $rows['install.ps1'].sha256) { throw 'Executing/committed frontdoor differs from this release. Download its install.ps1 and invoke that script explicitly.' }
+        if ($sourceDigest -cne $rows['install.ps1'].sha256 -or (Hash (Join-Path $operation 'install.ps1')) -cne $rows['install.ps1'].sha256) { throw 'Standalone/archive frontdoor differs from committed release source.' }
         [IO.Compression.ZipFile]::ExtractToDirectory($archive,$bundle)
     } finally { $zip.Dispose() }
+    return [pscustomobject]@{version=$Version;source_commit=$target.sha;source_digest=$sourceDigest;envelope=$envelope;receipt_path=$envelopePath;archive=$archive;bundle=$bundle;frontdoor=(Join-Path $Operation 'install.ps1')}
+}
+function Invoke-VerifiedFrontdoor([string]$Path,[hashtable]$Options) {
+    # A handoff is not a trust bypass: the selected script repeats admission.
+    # A mismatch on that one hop refuses rather than recursively downloading.
+    $guard=[Environment]::GetEnvironmentVariable('COPILOT_API_PROXY_INSTALL_HANDOFF','Process')
+    if ($guard) { throw 'Selected frontdoor mismatch after one verified handoff; refusing recursive fallback.' }
+    try {
+        [Environment]::SetEnvironmentVariable('COPILOT_API_PROXY_INSTALL_HANDOFF','1','Process')
+        & $Path @Options
+        if ($LASTEXITCODE -ne 0) { throw 'Verified release frontdoor failed; preserve the reported operation evidence.' }
+    } finally { [Environment]::SetEnvironmentVariable('COPILOT_API_PROXY_INSTALL_HANDOFF',$guard,'Process') }
+}
+function Invoke-RetainedVerification($Selected,[string]$Metadata,[string]$UserRoot,[string]$InstallRoot,[switch]$SelectedHandoff) {
+    # A child exit code is not proof of installed bytes. Bind the independent
+    # verifier to this admitted release, then exercise its read-only mode.
+    $receiptPath=Join-Path $Metadata 'installed.json'; Unlinked $receiptPath
+    $retained=Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json
+    if ($SelectedHandoff) {
+        # A future admitted release owns its receipt schema. Require the stable
+        # identity boundary here; its source-bound verifier enforces that schema.
+        foreach ($name in @('component','repository','version','source_commit','archive_sha256','parameters')) { if (-not $retained.PSObject.Properties[$name]) { throw 'Applied bytes retained, but installed receipt identity is incomplete; no success is reported.' } }
+        foreach ($name in @('UserRoot','InstallRoot')) { if (-not $retained.parameters.PSObject.Properties[$name]) { throw 'Applied bytes retained, but installed account/root identity is incomplete; no success is reported.' } }
+    } else {
+        Closed-Fields $retained @('schema_version','component','repository','version','source_commit','archive_sha256','parameters','files','configuration_paths','held_paths','last_code_change_utc')
+        Closed-Fields $retained.parameters @('UserRoot','InstallRoot','NodeExe','Port')
+        if ($retained.schema_version -ne 1) { throw 'Unsupported current-release installed receipt schema.' }
+    }
+    if ($retained.component -cne 'copilot-api-proxy' -or $retained.repository -cne $repository -or $retained.version -cne $Selected.version -or $retained.source_commit -cne $Selected.source_commit -or $retained.archive_sha256 -cne $Selected.envelope.asset_sha256 -or $retained.parameters.UserRoot -cne $UserRoot -or $retained.parameters.InstallRoot -cne $InstallRoot) { throw 'Applied bytes retained, but installed receipt differs from the admitted release/account/root; no success is reported.' }
+    foreach ($row in $Selected.envelope.payload) {
+        $code=Full-Path (Join-Path $InstallRoot $row.path); Unlinked $code
+        if (-not (Test-Path -LiteralPath $code -PathType Leaf) -or (Hash $code) -cne $row.sha256) { throw ('Applied bytes retained, but admitted installed payload differs: '+$row.path+'; no success is reported.') }
+    }
+    $verifier=Join-Path $Metadata 'install_local.ps1'; Unlinked $verifier
+    $packageBinding=@($Selected.envelope.payload | Where-Object { $_.path -ceq 'scripts/install_local.ps1' })
+    if ($packageBinding.Count -ne 1 -or (Hash $verifier) -cne $packageBinding[0].sha256) { throw 'Applied bytes retained, but the independent installed verifier is missing or changed; no success is reported.' }
+    if (-not $SelectedHandoff) {
+        $installedBinding=@($retained.files | Where-Object { $_.path -ceq $verifier })
+        if ($installedBinding.Count -ne 1 -or $installedBinding[0].sha256 -cne $packageBinding[0].sha256) { throw 'Current-release retained verifier receipt binding mismatch.' }
+    }
+    & $verifier -Mode Verify -Version $Selected.version -UserRoot $UserRoot -InstallRoot $InstallRoot
+    if ($LASTEXITCODE -ne 0) { throw 'Applied bytes retained, but independent installed verification failed; no success is reported.' }
+    Write-Host ('Install/update complete: '+$Selected.version+'. Independent retained verification passed; activation/authentication remain separate.')
+}
+try {
+    if ($Version -and ($Version -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' -or $Version -ieq 'latest')) { throw 'Version override must be an exact release tag.' }
+    $UserRoot = Full-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::UserProfile))
+    Unlinked $UserRoot
+    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    $metadata = Join-Path $UserRoot '.agents/installations/copilot-api-proxy'
+    $installedPath = Join-Path $metadata 'installed.json'
+    Unlinked $installedPath
+    $prior = if (Test-Path -LiteralPath $installedPath -PathType Leaf) { Get-Content -LiteralPath $installedPath -Raw | ConvertFrom-Json } else { $null }
+    if ($prior) {
+        Closed-Fields $prior @('schema_version','component','repository','version','source_commit','archive_sha256','parameters','files','configuration_paths','held_paths','last_code_change_utc')
+        Closed-Fields $prior.parameters @('UserRoot','InstallRoot','NodeExe','Port')
+        if ($prior.schema_version -ne 1 -or $prior.component -cne 'copilot-api-proxy' -or $prior.repository -cne $repository -or $prior.parameters.UserRoot -cne $UserRoot -or $prior.source_commit -cnotmatch '^[0-9a-f]{40}$') { throw 'Retained installation identity/account mismatch.' }
+    }
+    $selectedRoot = $InstallRoot
+    if (-not $selectedRoot -and $prior) { $selectedRoot = [string]$prior.parameters.InstallRoot }
+    if (-not $selectedRoot) {
+        $record = Join-Path $UserRoot '.local/share/copilot-proxy/install-dir.txt'
+        Unlinked $record
+        if (Test-Path -LiteralPath $record -PathType Leaf) { $selectedRoot = [IO.File]::ReadAllText($record).Trim() }
+        else { $selectedRoot = Join-Path $UserRoot '.agents/services/copilot-proxy' }
+    }
+    $selectedRoot = Full-Path $selectedRoot
+    $protectedRoots=@($selectedRoot,(Full-Path (Join-Path $UserRoot '.local/share/copilot-proxy')),(Full-Path $metadata))
+    foreach ($name in @('.agents','.claude','.omp')) { $protectedRoots += (Full-Path (Join-Path $UserRoot $name)) }
+    if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.git')) { $protectedRoots += (Full-Path $PSScriptRoot) }
+    if (Test-Path -LiteralPath $metadata -PathType Container) {
+        if ((Get-Acl -LiteralPath $metadata).GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $sid) { throw 'Retained installation metadata is not owned by the invoking account.' }
+    }
+    if ($Mode -eq 'Verify') {
+        if (-not $prior) { throw 'Missing retained installation receipt; Verify never downloads or repairs.' }
+        if ($Activate) { throw 'Verify is read-only and refuses activation.' }
+        $backend = Join-Path $metadata 'install_local.ps1'
+        Unlinked $backend
+        $binding = @($prior.files | Where-Object { $_.path -ceq $backend })
+        if ($binding.Count -ne 1 -or (Hash $backend) -cne $binding[0].sha256) { throw 'Retained verifier is missing or changed.' }
+        $frontdoorBinding=@($prior.files | Where-Object { $_.path -ceq (Join-Path $metadata 'install.ps1') })
+        $retainedFrontdoor=Join-Path $metadata 'install.ps1'
+        Unlinked $retainedFrontdoor
+        if ($frontdoorBinding.Count -ne 1 -or (Hash $retainedFrontdoor) -cne $frontdoorBinding[0].sha256) { throw 'Retained frontdoor is missing or changed.' }
+        if (-not $Version) { $Version=[string]$prior.version }
+        if ($Version -cne $prior.version) { throw 'Expected version does not match the retained installation.' }
+        $backendArgs = @{}; foreach ($key in $PSBoundParameters.Keys) { $backendArgs[$key] = $PSBoundParameters[$key] }
+        $backendArgs.Version=$Version; $backendArgs.Mode='Verify'
+        # Invoke the hash-bound retained verifier directly. Earlier retained
+        # backends return from Verify before WorkRoot/temp/network processing;
+        # an existing owned metadata directory needs no scratch creation and
+        # avoids assuming ownership of a profile-wide LocalAppData parent.
+        if (-not $backendArgs['WorkRoot']) { $backendArgs.WorkRoot=$metadata }
+        $backendArgs.UserRoot = $UserRoot
+        & $backend @backendArgs
+        if ($LASTEXITCODE -ne 0) { throw 'Offline verification failed.' }
+        exit 0
+    }
+    if ((Overlaps (Full-Path $PSCommandPath) $selectedRoot) -or (Overlaps (Full-Path $PSCommandPath) (Full-Path $metadata))) { throw 'Run a saved frontdoor outside installed code/metadata; the running script is never overwritten.' }
+    $automaticWork=-not $WorkRoot
+    if ($automaticWork) {
+        $localAppData=Full-Path ([Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData))
+        Unlinked $localAppData
+        if ((Get-Acl -LiteralPath $localAppData).GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $sid) { throw 'Local application data is not owned by the invoking account.' }
+        $WorkRoot=Join-Path $localAppData ('copilot-api-proxy-installer/operation-'+[guid]::NewGuid().ToString('N'))
+    }
+    $WorkRoot=Full-Path $WorkRoot; Unlinked $WorkRoot
+    foreach ($protected in $protectedRoots) { if (Overlaps $WorkRoot $protected) { throw 'WorkRoot must be outside source, harness, installation and private state roots.' } }
+    $drive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($WorkRoot))
+    if (-not $drive.IsReady -or $drive.DriveType -notin @([IO.DriveType]::Fixed,[IO.DriveType]::Removable,[IO.DriveType]::Ram)) { throw 'WorkRoot must be available local storage, not a mapped network drive.' }
+    if ($automaticWork) {
+        $ancestor=Split-Path -Parent $WorkRoot
+        while (-not (Test-Path -LiteralPath $ancestor)) { $ancestor=Split-Path -Parent $ancestor }
+        if ((Get-Acl -LiteralPath $ancestor).GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $sid) { throw 'Automatic WorkRoot ancestor is not owned by the invoking account.' }
+        New-Item -ItemType Directory -Path $WorkRoot | Out-Null
+        $acl=[Security.AccessControl.DirectorySecurity]::new(); $acl.SetAccessRuleProtection($true,$false)
+        $acl.SetOwner([Security.Principal.SecurityIdentifier]::new($sid))
+        foreach ($id in @($sid,'S-1-5-18','S-1-5-32-544')) { $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new($id),'FullControl','ContainerInherit,ObjectInherit','None','Allow')) }
+        Set-Acl -LiteralPath $WorkRoot -AclObject $acl
+    }
+    if (-not (Test-Path -LiteralPath $WorkRoot -PathType Container) -or (Get-Acl -LiteralPath $WorkRoot).GetOwner([Security.Principal.SecurityIdentifier]).Value -cne $sid) { throw 'WorkRoot must exist and be owned by the invoking account.' }
+    Write-Host ('Private operation files and retained backups: '+$WorkRoot)
+    # Child downloads, extraction, caches and temporary files remain in WorkRoot.
+    $operation = Join-Path $WorkRoot ('operation-'+[guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $operation | Out-Null
+    foreach ($key in @('TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR','npm_config_cache','BUN_INSTALL_CACHE_DIR')) { [Environment]::SetEnvironmentVariable($key,$operation,'Process') }
+    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+    if (-not $Version) {
+        $latest=Api 'releases/latest'
+        if ($latest.draft -isnot [bool] -or $latest.draft -or $latest.prerelease -isnot [bool] -or $latest.prerelease -or $latest.tag_name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$' -or $latest.tag_name -ieq 'latest') { throw 'No valid latest stable published release.' }
+        $Version=[string]$latest.tag_name
+    }
+    $selected=Receive-Release $Version $operation
+    $existing=$null
+    if (-not $prior -and (Test-Path -LiteralPath $selectedRoot -PathType Container) -and @(Get-ChildItem -LiteralPath $selectedRoot -Force).Count) {
+        $marker=Join-Path $selectedRoot 'VERSION.txt'; Unlinked $marker
+        if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) { throw 'Existing directory has no exact release identity; foreign/partial installations cannot be adopted.' }
+        $text=[IO.File]::ReadAllText($marker)
+        if ($text -cnotmatch '^version=([A-Za-z0-9][A-Za-z0-9._-]{0,127})\r?\nsource_commit=([0-9a-f]{40})\r?\ndirty=False\r?\n$') { throw 'Existing installation has an invalid/edited source marker.' }
+        $oldVersion=$matches[1]; $oldCommit=$matches[2]
+        if ($oldVersion -ceq $Version) { $existing=$selected }
+        else { $oldOperation=Join-Path $operation 'existing-release'; New-Item -ItemType Directory -Path $oldOperation | Out-Null; $existing=Receive-Release $oldVersion $oldOperation }
+        if ($existing.source_commit -cne $oldCommit) { throw 'Existing release marker/source mismatch.' }
+    }
+    $previousCommit=if ($prior) { [string]$prior.source_commit } elseif ($existing) { [string]$existing.source_commit } else { '' }
+    if ($previousCommit -and $previousCommit -cne $selected.source_commit) {
+        $comparison=Api ('compare/'+$previousCommit+'...'+$selected.source_commit)
+        if ($comparison.status -cne 'ahead' -or $comparison.base_commit.sha -cne $previousCommit) { throw 'Downgrade/divergent source refused; upgrades must descend from the installed source.' }
+    }
+    if ((Hash $PSCommandPath) -cne $selected.source_digest) {
+        $handoffArgs=@{}; foreach ($key in $PSBoundParameters.Keys) { $handoffArgs[$key]=$PSBoundParameters[$key] }
+        $handoffArgs.Version=$Version; $handoffArgs.WorkRoot=$WorkRoot; $handoffArgs.Mode=$Mode; $handoffArgs.InstallRoot=$selectedRoot
+        Invoke-VerifiedFrontdoor $selected.frontdoor $handoffArgs
+        if ($Mode -eq 'Install') { Invoke-RetainedVerification $selected $metadata $UserRoot $selectedRoot -SelectedHandoff }
+        exit 0
+    }
     $backendArgs = @{}; foreach ($key in $PSBoundParameters.Keys) { $backendArgs[$key] = $PSBoundParameters[$key] }
+    $backendArgs.Version=$Version; $backendArgs.Mode=$Mode
     $backendArgs.UserRoot=$UserRoot; $backendArgs.WorkRoot=$WorkRoot; $backendArgs.InstallRoot=$selectedRoot
-    $backendArgs.PackageReceipt=$envelopePath; $backendArgs.ArchivePath=$archive; $backendArgs.Frontdoor=$PSCommandPath
-    & (Join-Path $bundle 'scripts/install_bundle.ps1') @backendArgs -NoStop -NoStart -SkipAutostart
+    $backendArgs.PackageReceipt=$selected.receipt_path; $backendArgs.ArchivePath=$selected.archive; $backendArgs.Frontdoor=$PSCommandPath
+    if ($existing) { $backendArgs.ExistingPackageReceipt=$existing.receipt_path }
+    & (Join-Path $selected.bundle 'scripts/install_bundle.ps1') @backendArgs -NoStop -NoStart -SkipAutostart
     if ($LASTEXITCODE -ne 0) { throw 'Local installation failed; retain WorkRoot diagnostics/backups. No automatic rollback was attempted.' }
+    if ($Mode -eq 'Install') { Invoke-RetainedVerification $selected $metadata $UserRoot $selectedRoot }
     exit 0
 } catch { Write-Error $_ -ErrorAction Continue; exit 1 }

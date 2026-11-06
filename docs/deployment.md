@@ -2,7 +2,7 @@
 
 The public repository is [`gupta-ash/copilot-api-proxy`](https://github.com/gupta-ash/copilot-api-proxy). The runtime, npm package name and command remain `copilot-proxy`.
 
-Installation is a manual, current-user operation on Windows PowerShell 5.1 or later. It does not require a separate deployment controller or a shared staging checkout. Use a specific published release tag, not a moving branch or a `latest` download URL.
+Installation is a current-user local operation on Windows PowerShell 5.1 or later. Run the saved `install.ps1` without options to install/update the latest stable published release; it resolves and binds the exact tag/full commit before applying anything. No deployment controller, staging/source checkout, profile choice or runtime/work-directory matrix is required.
 
 ## Release assets and trust
 
@@ -14,57 +14,49 @@ Each release publishes these three assets together:
 
 The receipt uses `schema_version: 1` and `component: "copilot-proxy"`. It binds `source_repository`, the full 40-character `source_commit`, exact `tag` and `version`, `asset`, `asset_sha256`, and `declaration_sha256`. Its `payload` contains the exact case-sensitive normalized file list, with `path`, lowercase SHA-256 `sha256`, and regular-file `mode` (`100644` or `100755`) for each entry. These modes are also encoded in ZIP entry attributes. `built_utc` is receipt metadata, not an installed version marker.
 
-The installer checks this binding before invoking the packaged backend, including the standalone installer's equality to the root installer inside the ZIP. A checksum receipt is not a digital signature: the initial standalone script and release must come from a repository and release identity you trust. Save and inspect the script; do not pipe a downloaded script into `Invoke-Expression`.
+The installer checks this binding before invoking the packaged backend, including standalone/archive/committed frontdoor equality. A checksum receipt is not a digital signature or source authority: the initial script must come from the public repository identity you trust. Save and inspect it; never pipe it into `Invoke-Expression`. When a selected later release changes the committed frontdoor, the saved script validates the complete source/asset/member closure first, then invokes that verified script once with the exact resolved tag and same selections. It does not overwrite the saved/running script, bypass a mismatch or recurse on another mismatch.
 
 Before extraction or backend execution, the frontdoor also binds the selected commit's nontruncated Git tree and committed release declaration. Every static member, including both installer backends and all operators, must match its declared committed Git blob and projected mode. Only the bounded generated ESM/map output and receipt-bound production dependency tree are admitted outside that static closure. Windows builtin modules are imported from the invoking PowerShell's own installation, not an inherited different-edition module search path; lifecycle children use native Windows PowerShell with a child-only native module path. Caller profiles and global module-path settings are unchanged.
 
-## Download and check an exact version
+## Ordinary installation and update
 
-Prerequisites:
+Prerequisites are Windows PowerShell 5.1+, HTTPS public GitHub access and an existing Node >=20. No Python or authenticated/private repository access is needed. Node selection is optional explicit `-NodeExe`, retained Node on upgrade, `NODE_EXE`, then PATH `node.exe`/`node`; an invalid selected executable refuses instead of falling back or provisioning a runtime.
 
-- Windows PowerShell 5.1+ and network access to the selected GitHub release.
-- An existing Node.js executable, major version 20 or later. The installer does not install Node for you.
-- A dedicated, existing, current-user-owned absolute `WorkRoot` outside source checkouts, installed code and application state. Downloads and extraction belong there, not in the live service directory.
-
-Replace `<exact-tag>` with the release tag you selected. The tag is the source builder's abbreviated commit identity; use the exact published spelling.
+Download the component frontdoor once into a directory outside installed code/metadata, inspect it, then use the same local command for fresh installation and later updates:
 
 ```powershell
-$version = '<exact-tag>'
-$work = Join-Path $env:LOCALAPPDATA 'copilot-api-proxy-download'
-New-Item -ItemType Directory -Path $work -Force | Out-Null
-$installer = Join-Path $work 'install.ps1'
-$node = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-
-Invoke-WebRequest -UseBasicParsing `
-    -Uri "https://github.com/gupta-ash/copilot-api-proxy/releases/download/$version/install.ps1" `
-    -OutFile $installer
-
-& $installer -Version $version -WorkRoot $work -NodeExe $node -Mode Check
-if ($LASTEXITCODE -ne 0) { throw 'Release check failed.' }
+Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/gupta-ash/copilot-api-proxy/releases/latest/download/install.ps1' -OutFile './install.ps1'
+& ./install.ps1
+if ($LASTEXITCODE -ne 0) { throw 'Install/update refused or failed; retain its named diagnostics.' }
 ```
+
+The actual invoking OS profile is automatic; it cannot be selected on the public command line. WorkRoot defaults to a fresh owned, privately ACLed operation directory under that user's actual LOCALAPPDATA. Its exact path and retained private backups are printed. Child downloads/extraction/temp/cache stay there. Optional `-WorkRoot` must already exist, be local/absolute/owned and not overlap source, harness, install or state roots. Preservation is not disposable download cache.
+
+## Optional check and exact-version controls
+
+```powershell
+& ./install.ps1 -Mode Check                    # latest stable, no live target writes
+& ./install.ps1 -Version '<exact-tag>' -Mode Check
+& ./install.ps1 -Version '<exact-tag>'          # same installation/update path, exact tag pinned
+```
+
+Service tags retain the source builder's abbreviated commit identity, not semantic-version ordering. Explicit Version must be an exact published tag, never a branch or literal `latest`. Default release selection excludes drafts/prereleases. Upgrades, including unreceipted adoption, must descend from the actual prior source OID.
 
 `Check` downloads and validates the selected assets in `WorkRoot` and checks the local target. It does not install code, activate the proxy, rewrite application state or change autostart registration. Inspect the downloaded receipt's repository, tag and full source commit, and confirm the selected local target before installation. A successful check is not proof that the selected version is running.
 
-## Install, then activate explicitly
+## Installation ownership and explicit activation
 
-Use the same script and exact version:
+The code root is selected from the retained receipt, then the existing same-user `~/.local/share/copilot-proxy/install-dir.txt`, otherwise `~/.agents/services/copilot-proxy`. Optional `-InstallRoot` selects a fresh dedicated code root, never relocates an existing installation. Retained Node/root/port selections win when omitted; supplied conflicting coordinates refuse.
 
-```powershell
-& $installer -Version $version -WorkRoot $work -NodeExe $node -Mode Install
-if ($LASTEXITCODE -ne 0) { throw 'Installation failed.' }
-```
-
-The default code location is the retained installation location or existing same-user installation record; for a fresh installation it is `~/.agents/services/copilot-proxy`. `-InstallRoot` may select a dedicated same-user code directory for a fresh installation. It is not a relocation command for an existing installation. `-UserRoot` defaults to the actual invoking user's profile; it does not authorize installing into another account.
-
-An existing installation without the public installer's ownership receipt requires explicit `-AdoptExisting` and must pass the installer's ownership and content checks. This is not permission to overwrite an arbitrary nonempty directory. Keep an existing installation and its application state intact if adoption is refused.
+An unreceipted recognizable installation is adopted automatically only after its exact VERSION/source marker resolves to an available fully admitted public release, and every prior immutable owned file matches that release. Overwritten owned files are privately backed up. Missing/edited/foreign files, incomplete installations and pre-receipt retained verifier metadata refuse; there is no adoption override or blind partial-install retry. Unknown neighbors and private state remain untouched; removed old files still need explicit retirement and unchanged old hashes.
 
 The application state directory remains `~/.local/share/copilot-proxy`: authentication, configuration, logs and traces are local state, not release inputs. The installer preserves existing configuration and the selected port; a fresh installation defaults to loopback port 4143. Existing autostart registration is left untouched.
 
-Installing files and running those files are separate outcomes. If changed code is required while the proxy is running, ordinary `Install` refuses before live writes: either stop the proxy explicitly first or request activation with exact local confirmation. Installing into a stopped target without activation does not start it or establish live readiness. When ready for a local restart, request activation interactively:
+Installing and running those files are separate outcomes. A stopped installation never starts by default. When changed code is required under an owned running process, ordinary Install offers the existing exact interactive activation confirmation before its first stop/live write; decline/noninteractive input refuses. Alternatively stop only the owned proxy explicitly first, or select deliberate activation/start:
 
 ```powershell
-& $installer -Version $version -WorkRoot $work -NodeExe $node -Mode Install -Activate
-if ($LASTEXITCODE -ne 0) { throw 'Install or activation did not complete.' }
+& ./install.ps1 -Activate
+if ($LASTEXITCODE -ne 0) { throw 'Install or activation did not complete; preserve the named evidence.' }
 ```
 
 Review and enter the exact confirmation string presented by the installer. It binds the component, selected version, observed process identity, installation root and live peer count. Do not automate this prompt or treat `-Activate` alone as restart approval. The installer preserves the discovered launcher variant, including a no-rollback variant, rather than silently changing the existing startup policy.
@@ -74,17 +66,19 @@ The root frontdoor forwards explicit `-Activate` to the backend's separately con
 ## Verify installed files offline
 
 ```powershell
-& $installer -Version $version -WorkRoot $work -Mode Verify
+& ./install.ps1 -Mode Verify
+# An optional expected-version mismatch fails without any download:
+& ./install.ps1 -Mode Verify -Version '<expected-installed-tag>'
 if ($LASTEXITCODE -ne 0) { throw 'Installed verification failed.' }
 ```
 
-`Verify` uses retained local metadata and verifier files; it does not fetch another release or contact GitHub. It checks installed ownership, package-bound bytes and retained installation coordinates without repairing files. It does not prove that the selected version is running or that live authentication is ready. Successful explicit activation separately establishes the owned process and authenticated health; do not treat an offline file verification as that runtime proof.
+Every normal Install, including a verified same-version no-op, invokes the independent retained installed verifier before reporting completion. After successful selected-frontdoor handoff, the caller binds required component/repository/version/source/archive/account/root identities and the actual installed payload/verifier SHA values to its admitted release; that verified selected retained verifier, not the older caller, enforces the selected receipt's closed schema. Direct current-release installation retains its closed receipt/schema checks. Separate Verify uses the retained version when omitted and directly invokes its hash-bound retained verifier. When WorkRoot is omitted it supplies the existing owned retained metadata directory internally; Verify returns before work/temp/network processing, creates nothing, and makes no assumption about ownership of the profile-wide LOCALAPPDATA parent. It never fetches releases, launches Node, repairs files or queries/changes registrars. Actual package-bound files and retained account/root/port/config prerequisites are checked; activation/authentication remain separate outcomes.
 
 The installer retains its public receipt and frontdoor/verifier closure under `~/.agents/installations/copilot-api-proxy`. The installed ownership receipt identifies the public component as `copilot-api-proxy`; this is distinct from the package receipt's unchanged runtime component `copilot-proxy`. Keep the retained closure with the installation so subsequent offline verification uses the accepted installer rather than an arbitrary checkout.
 
 Do not invoke `scripts/install_bundle.ps1` directly as a substitute for these checks. It is the packaged backend called only after the root installer accepts the selected release and local ownership.
 
-Optional adoption/activation switches may be omitted under PowerShell StrictMode; omission is false, not a missing-property error. Offline Verify likewise recovers omitted install-root and Node coordinates from its retained receipt rather than requiring repeated arguments.
+Optional activation may be omitted under PowerShell StrictMode; omission is false, not a missing-property error. Offline Verify recovers omitted install-root and Node coordinates from its retained receipt rather than requiring repeated arguments. Supplied identity/root/runtime/port conflicts are forwarded intact to the retained verifier, never silently discarded.
 
 ## Manual code-only recovery after a partial install
 
@@ -113,7 +107,9 @@ $Candidates | Format-Table path,sha256,mode,existed_before
 $Effects
 ```
 
-Those commands only inspect evidence; they do not automatically execute recovery. Do not convert an unreviewed entire inventory into a copy loop. For a **partial first installation** there is no prior successful receipt/version to restore or verify. Preserve state and audit the exact candidate effects; remove only newly created unchanged immutable candidate files under the rules above if choosing to return to an empty code root. If recognizable unreceipted installation bytes remain and you choose to complete takeover instead, Check/Install require explicit `-AdoptExisting` and ordinary full preflight/private backup. No partial-install exception releases that requirement.
+Those commands only inspect evidence; they do not execute recovery. Do not convert an unreviewed entire inventory into a copy loop. A partial first installation has no prior successful receipt/version to restore or verify. Preserve state and audit its exact effects; remove only newly created unchanged immutable candidate files under the rules above if returning to an empty code root. Adoption never completes incomplete or edited candidate bytes merely because they look recognizable: the complete verified exact-release prior population is required.
+
+If the failure occurred after writing retained inputs but before `installed.json`, the exact files `~/.agents/installations/copilot-api-proxy/{install.ps1,install_local.ps1,package-receipt.json}` intentionally block another install as foreign/pre-receipt metadata. They are not permission to repair or delete the metadata directory. An authorized manual disposition may remove each **individual** such file only when this operation's retained candidate inventory records that absolute path with `existed_before: false`, its current SHA still equals that candidate SHA, its candidate bytes match the source-bound selected release (the package receipt itself must still match the preserved admitted receipt), and recorded partial effects bind its creation to this operation. Preserve the operation evidence/backups first and recheck path/account/hash immediately before each removal. If a file existed before, differs, is linked, or lacks this evidence, hold it for separate reviewed disposition; do not delete, overwrite or claim it. Never fabricate `installed.json`, clear the entire metadata namespace, restore private APP_DIR state, remove install-dir.txt or use candidate-looking bytes as admission. Once only those proven new immutable leftovers have been removed, ordinary Check/Install may proceed only if the remaining code is empty or a complete exact known-byte release. There is no automatic repair/resume or metadata bypass.
 
 ## Package contents
 

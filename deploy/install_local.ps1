@@ -4,8 +4,9 @@
 param(
     [string]$Version, [string]$WorkRoot, [ValidateSet('Check','Install','Verify')][string]$Mode='Install',
     [string]$UserRoot='', [string]$InstallRoot='', [string]$NodeExe='', [ValidateRange(1,65535)][int]$Port,
-    [switch]$AdoptExisting, [switch]$Activate,
-    [string]$PackageReceipt='', [string]$ArchivePath='', [string]$Frontdoor='', [string]$BundleRoot=''
+    [switch]$Activate,
+    [string]$PackageReceipt='', [string]$ArchivePath='', [string]$Frontdoor='', [string]$BundleRoot='',
+    [string]$ExistingPackageReceipt=''
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
@@ -204,8 +205,9 @@ function Invoke-LocalInstall {
     if ($prior) { Assert-Receipt $prior $homeRoot $root $metaRoot; Assert-InstalledFiles $prior }
     $node=[string]$Options['NodeExe']
     if (-not $node -and $prior) { $node=[string]$prior.parameters.NodeExe }
-    if (-not $node) { $command=Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1; if ($command) { $node=$command.Source } }
-    if (-not $node) { throw 'Prerequisite: an existing Node 20+ executable (NodeExe).' }
+    if (-not $node -and $env:NODE_EXE) { $node=$env:NODE_EXE }
+    if (-not $node) { foreach ($name in @('node.exe','node')) { $command=Get-Command $name -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1; if ($command) { $node=$command.Source; break } } }
+    if (-not $node) { throw 'Prerequisite: an existing Node >=20 executable; use NodeExe, NODE_EXE or PATH. Runtimes are never provisioned.' }
     $node=Get-LocalPath $node; Assert-PlainPath $node
     if (-not (Test-Path -LiteralPath $node -PathType Leaf)) { throw 'Prerequisite NodeExe is missing; runtimes are never provisioned.' }
     $selectedPort=if ($Options.ContainsKey('Port') -and $Options.Port) { [int]$Options.Port } elseif ($prior) { [int]$prior.parameters.Port } else { 4143 }
@@ -213,7 +215,7 @@ function Invoke-LocalInstall {
     if ($prior -and ($node -cne $prior.parameters.NodeExe -or $selectedPort -ne $prior.parameters.Port)) { throw 'Supplied NodeExe/Port conflicts with the retained installation coordinates.' }
     if ($mode -eq 'Verify') {
         if (-not $prior) { throw 'No retained installation receipt; Verify never repairs or downloads.' }
-        if ($Options['Activate'] -or $Options['AdoptExisting']) { throw 'Verify refuses activation/adoption.' }
+        if ($Options['Activate']) { throw 'Verify refuses activation.' }
         if ($prior.version -cne $version) { throw 'Expected version does not match the retained installation.' }
         $envelope=Read-PackageReceipt (Join-Path $metaRoot 'package-receipt.json') $version
         if ($envelope.source_commit -cne $prior.source_commit -or $envelope.asset_sha256 -cne $prior.archive_sha256) { throw 'Retained package binding mismatch.' }
@@ -278,13 +280,26 @@ function Invoke-LocalInstall {
     }
     $recognizable=(Test-Path -LiteralPath (Join-Path $root 'dist/main.js') -PathType Leaf) -and (Test-Path -LiteralPath (Join-Path $root 'scripts/start_proxy.ps1') -PathType Leaf) -and (Test-Path -LiteralPath (Join-Path $root 'package.json') -PathType Leaf)
     $population=if (Test-Path -LiteralPath $root -PathType Container) { @(Get-ChildItem -LiteralPath $root -Force).Count } else { 0 }
-    if (-not $prior -and $population -gt 0 -and (-not $recognizable -or -not $Options['AdoptExisting'])) { throw 'Existing recognizable installation requires explicit AdoptExisting; foreign directories cannot be adopted.' }
-    $oldFiles=@{}; if ($prior) { foreach ($row in $prior.files) { $oldFiles[$row.path]=$row } }
+    $adopted=@{}
+    if (-not $prior -and $population -gt 0) {
+        if (-not $recognizable -or -not $Options['ExistingPackageReceipt']) { throw 'Existing installation requires a verified exact known-byte release; foreign/partial directories cannot be adopted.' }
+        $existingReceiptPath=Get-LocalPath $Options.ExistingPackageReceipt; Assert-PlainPath $existingReceiptPath
+        if (-not (Test-Within $existingReceiptPath $work)) { throw 'Existing release admission must be retained inside WorkRoot.' }
+        $existingJson=Read-InstallJson $existingReceiptPath
+        $existing=Read-PackageReceipt $existingReceiptPath ([string]$existingJson.version)
+        foreach ($row in $existing.payload) {
+            $path=Get-LocalPath (Join-Path $root $row.path); Assert-PlainPath $path
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf) -or (Get-InstallHash $path) -cne $row.sha256) { throw ('Existing release owned-file drift/conflict: '+$path) }
+            $adopted[$path]=[pscustomobject]@{path=$path;sha256=$row.sha256;mode=$row.mode}
+        }
+        Write-Host ('Adopting same-user exact known-byte release '+$existing.version+'; overwritten owned files will be privately preserved.')
+    }
+    $oldFiles=@{}; if ($prior) { foreach ($row in $prior.files) { $oldFiles[$row.path]=$row } } else { foreach ($path in $adopted.Keys) { $oldFiles[$path]=$adopted[$path] } }
     $newFiles=@(); $writes=@(); $retire=@(); $codeChanged=$false
     foreach ($row in $envelope.payload) {
         $target=Get-LocalPath (Join-Path $root $row.path); Assert-PlainPath $target
         if (Test-Path -LiteralPath $target -PathType Container) { throw "Owned-file destination is a directory: $target" }
-        if ($prior -and -not $oldFiles.ContainsKey($target) -and (Test-Path -LiteralPath $target)) { throw "Foreign same-name file conflict: $target" }
+        if (-not $oldFiles.ContainsKey($target) -and (Test-Path -LiteralPath $target)) { throw "Foreign same-name file conflict: $target" }
         $newFiles += [ordered]@{path=$target;sha256=$row.sha256;mode=$row.mode}
         if (-not (Test-Path -LiteralPath $target -PathType Leaf) -or (Get-InstallHash $target) -cne $row.sha256) {
             $writes += [pscustomobject]@{source=(Join-Path $bundle $row.path);target=$target;sha256=$row.sha256}
@@ -292,13 +307,14 @@ function Invoke-LocalInstall {
         }
     }
     $retired=@{}; foreach ($name in $declaration.retired_files) { Assert-PackagePath $name; if ($retired.ContainsKey($name) -or $manifest.ContainsKey($name)) { throw 'Invalid explicit retirement.' }; $retired[$name]=$true }
-    if ($prior) { foreach ($old in $prior.files) { if (Test-Within $old.path $root) { $relative=$old.path.Substring($root.Length+1).Replace('\','/'); if (-not $manifest.ContainsKey($relative)) { if (-not $retired.ContainsKey($relative)) { throw "Previously owned file needs explicit retirement: $relative" }; $retire += $old.path; if (Test-CodeFile $relative $old.mode) { $codeChanged=$true } } } } }
+    foreach ($old in $oldFiles.Values) { if (Test-Within $old.path $root) { $relative=$old.path.Substring($root.Length+1).Replace('\','/'); if (-not $manifest.ContainsKey($relative)) { if (-not $retired.ContainsKey($relative)) { throw "Previously owned file needs explicit retirement: $relative" }; $retire += $old.path; if (Test-CodeFile $relative $old.mode) { $codeChanged=$true } } } }
     $configPath=Join-Path $appRoot 'config.yaml'; Assert-PlainPath $configPath; Assert-PlainPath $record
     foreach ($path in @($configPath,$record)) { if (Test-Path -LiteralPath $path -PathType Container) { throw 'Private config/record destination is a directory.' } }
     foreach ($path in @($receiptPath,(Join-Path $metaRoot 'install.ps1'),(Join-Path $metaRoot 'install_local.ps1'),(Join-Path $metaRoot 'package-receipt.json'))) {
         Assert-PlainPath $path
         if (Test-Path -LiteralPath $path -PathType Container) { throw 'Retained metadata destination is a directory.' }
     }
+    if (-not $prior) { foreach ($path in @((Join-Path $metaRoot 'install.ps1'),(Join-Path $metaRoot 'install_local.ps1'),(Join-Path $metaRoot 'package-receipt.json'))) { if (Test-Path -LiteralPath $path) { throw 'Foreign retained installation metadata without a successful receipt.' } } }
     if (-not $prior) {
         $existingPort=$null
         if (Test-Path -LiteralPath $configPath -PathType Leaf) {
@@ -324,11 +340,13 @@ function Invoke-LocalInstall {
     }
     # Complete selected-set preflight is above the first live write or stop.
     $process=Get-OwnedProcess $root $node $selectedPort
-    if ($mode -eq 'Install' -and $process -and $codeChanged -and -not $Options['Activate']) { throw 'Code change required while proxy is running. Re-run with Activate and exact local confirmation, or stop it explicitly first.' }
+    # The ordinary local update may offer the same bound interactive consent.
+    # A declined/noninteractive prompt fails before the first stop/live write.
+    $activate=[bool]$Options['Activate'] -or ($mode -eq 'Install' -and $null -ne $process -and $codeChanged)
     if ($mode -eq 'Check') { Write-Host ("Check: {0} file writes, {1} explicit unchanged retirements; state/registrars unchanged; activation needed={2}." -f $writes.Count,$retire.Count,($codeChanged -and $null -ne $process)); return }
-    if ($prior -and $prior.version -ceq $version -and $writes.Count -eq 0 -and $retire.Count -eq 0 -and $null -eq $seed -and (Test-Path -LiteralPath $record -PathType Leaf) -and -not $Options['Activate']) { Write-Host 'Same exact version: actual owned files verified; no live writes or activation.'; return }
+    if ($prior -and $prior.version -ceq $version -and $writes.Count -eq 0 -and $retire.Count -eq 0 -and $null -eq $seed -and (Test-Path -LiteralPath $record -PathType Leaf) -and -not $activate) { Write-Host 'Same exact version: actual owned files verified; no live writes or activation.'; return }
     $launcher='start_proxy.ps1'
-    if ($Options['Activate']) {
+    if ($activate) {
         $launcher=Get-LauncherVariant $root
         $peers=@(Get-ActivationPeers $selectedPort)
         foreach ($peer in $peers) { Write-Host ('Live peer: '+$peer.RemoteAddress+':'+$peer.RemotePort+' PID='+$peer.OwningProcess) }
@@ -359,12 +377,13 @@ function Invoke-LocalInstall {
     try {
         foreach ($saved in $backupRows) { if ((Get-InstallHash $saved.path) -cne $saved.sha256) { throw 'Live file changed after preservation; refusing overwrite.' } }
         if ($prior) { Assert-InstalledFiles $prior }
-        if ($Options['Activate']) {
+        foreach ($old in $adopted.Values) { if ((Get-InstallHash $old.path) -cne $old.sha256) { throw 'Existing release bytes changed after adoption preflight.' } }
+        if ($activate) {
             $fresh=Get-OwnedProcess $root $node $selectedPort
             if (($null -eq $fresh) -ne ($null -eq $process) -or ($fresh -and ($fresh.Id -ne $process.Id -or $fresh.StartTime -ne $process.StartTime))) { throw 'Proxy identity changed before activation.' }
             Assert-PeerSubset @(Get-ActivationPeers $selectedPort) $peers
         }
-        if ($Options['Activate'] -and $process) {
+        if ($activate -and $process) {
             $script:OperatorExitCode=$null
             $effects.Add('attempted owned proxy stop')
             Invoke-OwnedOperator (Join-Path $root 'scripts/stop_proxy.ps1')
@@ -391,13 +410,13 @@ function Invoke-LocalInstall {
         # Receipt is stamped only after every requested file/config effect completes.
         foreach ($row in $newFiles) { Assert-PlainPath $row.path; if ((Get-InstallHash $row.path) -cne $row.sha256) { throw 'Installed file changed before receipt stamping.' } }
         Write-AtomicText $receiptPath (($receipt | ConvertTo-Json -Depth 8)+"`n")
-        Write-Host ('Installed verified bytes '+$version+'. No autostart/credential/state migration performed.')
+        Write-Host ('Owned bytes applied '+$version+'. Frontdoor success requires independent retained verification. No autostart/credential/state migration performed.')
     } catch {
         $effectsPath=Join-Path $backup 'partial-effects.json'
         Write-AtomicText $effectsPath ((ConvertTo-Json -InputObject @($effects.ToArray()))+"`n")
         throw ('Partial installation; no successful new receipt was stamped and blind retry is not recovery. Preservation='+$backup+'; Inventory='+(Join-Path $backup 'inventory.json')+'; CandidateFiles='+(Join-Path $backup 'candidate-files.json')+'; CandidateReceipt='+(Join-Path $backup 'candidate-package-receipt.json')+'; PartialEffects='+$effectsPath+'. Follow docs/deployment.md#manual-code-only-recovery-after-a-partial-install; preserve all local config/auth/state. Possible effects: '+($effects -join '; ')+'. '+$_)
     }
-    if ($Options['Activate']) {
+    if ($activate) {
         $env:PATH=(Split-Path -Parent $node)+';'+$env:PATH
         $script:OperatorExitCode=$null
         Push-Location -LiteralPath $root

@@ -12,7 +12,7 @@ $archiveFull=(Resolve-Path -LiteralPath $Archive).ProviderPath
 $receiptFull=(Resolve-Path -LiteralPath $Receipt).ProviderPath
 $node=(Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
 $scratch=Join-Path $env:TEMP ('proxy-install-fixture-'+[guid]::NewGuid().ToString('N'))
-$environment=@{}; foreach ($key in @('HOME','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR','GITHUB_TOKEN','GH_TOKEN','COPILOT_PROXY_CONFIG','COPILOT_PROXY_PORT','COPILOT_PROXY_HOST')) { $environment[$key]=[Environment]::GetEnvironmentVariable($key,'Process') }
+$environment=@{}; foreach ($key in @('HOME','USERPROFILE','APPDATA','LOCALAPPDATA','TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR','NODE_EXE','GITHUB_TOKEN','GH_TOKEN','COPILOT_PROXY_CONFIG','COPILOT_PROXY_PORT','COPILOT_PROXY_HOST')) { $environment[$key]=[Environment]::GetEnvironmentVariable($key,'Process') }
 $junction=$null
 try {
     New-Item -ItemType Directory -Path $scratch | Out-Null
@@ -44,6 +44,13 @@ try {
     $missing=Clone-Options; $missing.NodeExe=Join-Path $work 'missing-node.exe'
     Refuses $missing 'NodeExe is missing'
     if (Test-Path -LiteralPath $root) { throw 'Prerequisite refusal created live files.' }
+    $env:NODE_EXE=Join-Path $work 'missing-environment-node.exe'
+    $missingEnvironment=Clone-Options; $missingEnvironment.Remove('NodeExe')
+    Refuses $missingEnvironment 'NodeExe is missing'
+    $env:NODE_EXE=$node
+    $discovered=Clone-Options; foreach ($key in @('NodeExe','UserRoot','InstallRoot','Port')) { $discovered.Remove($key) }
+    Invoke-LocalInstall $discovered
+    if ((Test-Path -LiteralPath $root) -or (Test-Path -LiteralPath $app) -or (Test-Path -LiteralPath $meta)) { throw 'Automatic Node/profile/root Check mutated live roots.' }
     Invoke-LocalInstall $options
     if ((Test-Path -LiteralPath $root) -or (Test-Path -LiteralPath $app) -or (Test-Path -LiteralPath $meta)) { throw 'Check mutated live roots.' }
     $options.Mode='Install'; Invoke-LocalInstall $options
@@ -63,6 +70,22 @@ try {
     foreach ($path in $state.Keys) { if ((Get-InstallHash $path) -cne $state[$path]) { throw 'Same-version run changed private state/unknown neighbor.' } }
     $verify=@{Version=$package.version;Mode='Verify';WorkRoot=$work;UserRoot=$homeFixture}
     Invoke-LocalInstall $verify
+    $retainedOptions=Clone-Options; foreach ($key in @('NodeExe','UserRoot','InstallRoot','Port')) { $retainedOptions.Remove($key) }
+    $env:NODE_EXE=Join-Path $work 'unusable-environment-node.exe'
+    Invoke-LocalInstall $retainedOptions
+    if ((Get-InstallHash $installedPath) -cne $before) { throw 'Omitted coordinates did not preserve the verified existing installation.' }
+    $env:NODE_EXE=$node
+    $verify.Remove('WorkRoot'); $verify.Remove('UserRoot')
+    Invoke-LocalInstall $verify
+    # The frontdoor's offline fallback supplies this existing retained directory,
+    # not a profile-wide LocalAppData parent or a newly created work directory.
+    $metadataBefore=@(Get-ChildItem -LiteralPath $meta -Recurse -Force | ForEach-Object { $_.FullName })
+    $verify.WorkRoot=$meta
+    Invoke-LocalInstall $verify
+    $metadataAfter=@(Get-ChildItem -LiteralPath $meta -Recurse -Force | ForEach-Object { $_.FullName })
+    if (@(Compare-Object $metadataBefore $metadataAfter).Count -or (Get-InstallHash $installedPath) -cne $before -or (Get-Item -LiteralPath $installedPath).LastWriteTimeUtc -ne $time) { throw 'Offline retained-directory verification created/changed installation metadata.' }
+    foreach ($path in $state.Keys) { if ((Get-InstallHash $path) -cne $state[$path]) { throw 'Offline retained-directory verification changed state/unknown neighbors.' } }
+    $verify.Remove('WorkRoot')
     $wrong=Clone-Options; $wrong.InstallRoot=Join-Path $homeFixture 'different-root'; Refuses $wrong 'authoritative|mismatch'
     $wrong=Clone-Options; $wrong.Port=49174; Refuses $wrong 'coordinates'
     $wrong=Clone-Options; $wrong.UserRoot=Join-Path $scratch 'foreign-user'; Refuses $wrong 'profile'
@@ -167,6 +190,14 @@ try {
     # auth must not become success, retries, or automatic state/code rollback.
     $seams=@{}; foreach ($name in @('Get-OwnedProcess','Get-LauncherVariant','Confirm-LocalActivation','Invoke-OwnedOperator','Invoke-RestMethod')) { $seams[$name]=(Get-Command $name).ScriptBlock }
     $script:fixtureActivated=$false; $script:healthObservations=0; $script:operatorCalls=@()
+    $declined=New-FixtureRelease 'fixture-v5-declined' ('5'*40) $false $false
+    $beforeDecline=Get-InstallHash $installedPath
+    function Get-OwnedProcess { return [pscustomobject]@{Id=2147482999;StartTime=[DateTime]::UtcNow} }
+    function Get-LauncherVariant { return 'start_proxy_no_rollback.ps1' }
+    function Confirm-LocalActivation { throw 'synthetic declined bound activation consent' }
+    Refuses $declined 'synthetic declined bound activation consent'
+    if ((Get-InstallHash $installedPath) -cne $beforeDecline -or $script:operatorCalls.Count -ne 0) { throw 'Ordinary running update mutated files or invoked a lifecycle operator before consent.' }
+    foreach ($name in $seams.Keys) { Set-Item -Path ('Function:\'+$name) -Value $seams[$name] }
     $activationStamp=[DateTime]::UtcNow
     function Get-OwnedProcess { if ($script:fixtureActivated) { return [pscustomobject]@{Id=2147483000;StartTime=$activationStamp} }; return $null }
     function Get-LauncherVariant { return 'start_proxy_no_rollback.ps1' }
@@ -195,34 +226,49 @@ try {
     if (Test-Path -LiteralPath (Join-Path $failureHome '.agents/installations/copilot-api-proxy/installed.json')) { throw 'Interrupted copy stamped a successful installation.' }
     if (-not @(Get-ChildItem -LiteralPath $work -Recurse -Filter partial-effects.json).Count) { throw 'Partial effects diagnostics were not retained.' }
     Set-Item Function:\Write-AtomicBytes $writer
-    # A recognizable partial first install still requires explicit adoption;
-    # there is no implicit repair exemption for candidate-looking bytes.
+    # Candidate-looking partial bytes are not an exact known-byte installation.
     foreach ($name in @('dist','scripts')) { New-Item -ItemType Directory -Path (Join-Path $interrupted.InstallRoot $name) -Force | Out-Null }
     foreach ($name in @('dist/main.js','scripts/start_proxy.ps1','package.json')) { Copy-Item -LiteralPath (Join-Path $bundle $name) -Destination (Join-Path $interrupted.InstallRoot $name) -Force }
-    Refuses $interrupted 'AdoptExisting'
-    $interrupted.AdoptExisting=$true; Invoke-LocalInstall $interrupted
-    Invoke-LocalInstall @{Version=$package.version;Mode='Verify';WorkRoot=$work;UserRoot=$homeFixture}
+    Refuses $interrupted 'verified exact known-byte release'
+    $knownReceipt=Join-Path $work 'known-existing-package.json'; Copy-Item -LiteralPath $receiptFull -Destination $knownReceipt
+    $partialMarker=Join-Path $interrupted.InstallRoot 'VERSION.txt'; if (Test-Path -LiteralPath $partialMarker) { Remove-Item -LiteralPath $partialMarker }
+    $interrupted.ExistingPackageReceipt=$knownReceipt; Refuses $interrupted 'drift/conflict'
     $homeFixture=$options.UserRoot
-    # Explicit adoption backs up overwritten owned code, never unknown neighbors.
+    # Automatic adoption accepts only a complete prior release, preserving every
+    # overwritten owned file privately and refusing even recognizable edits.
     $adoptHome=Join-Path $scratch 'adopt-home'; New-Item -ItemType Directory -Path $adoptHome | Out-Null
     $homeFixture=$adoptHome
     $adoptRoot=Join-Path $adoptHome '.agents/services/copilot-proxy'
-    New-Item -ItemType Directory -Path (Join-Path $adoptRoot 'dist'),(Join-Path $adoptRoot 'scripts') -Force | Out-Null
-    [IO.File]::WriteAllText((Join-Path $adoptRoot 'dist/main.js'),'console.log("synthetic old code");')
-    Copy-Item -LiteralPath (Join-Path $bundle 'scripts/start_proxy.ps1') -Destination (Join-Path $adoptRoot 'scripts/start_proxy.ps1')
-    Copy-Item -LiteralPath (Join-Path $bundle 'package.json') -Destination (Join-Path $adoptRoot 'package.json')
+    New-Item -ItemType Directory -Path $adoptRoot -Force | Out-Null
+    foreach ($item in Get-ChildItem -LiteralPath $bundle -Force) { Copy-Item -LiteralPath $item.FullName -Destination $adoptRoot -Recurse }
     [IO.File]::WriteAllText((Join-Path $adoptRoot 'unknown.txt'),'unclaimed')
-    $adopt=Clone-Options; $adopt.UserRoot=$adoptHome; $adopt.InstallRoot=$adoptRoot
-    Refuses $adopt 'AdoptExisting'
-    $adopt.AdoptExisting=$true; Invoke-LocalInstall $adopt
+    $adopt=@{}; foreach ($key in $second.Keys) { $adopt[$key]=$second[$key] }; $adopt.UserRoot=$adoptHome; $adopt.InstallRoot=$adoptRoot
+    Refuses $adopt 'verified exact known-byte release'
+    $adopt.ExistingPackageReceipt=$knownReceipt
+    $oldEntry=Join-Path $adoptRoot 'dist/main.js'; $oldBytes=[IO.File]::ReadAllBytes($oldEntry)
+    [IO.File]::AppendAllText($oldEntry,'// synthetic local edit')
+    Refuses $adopt 'drift/conflict'
+    [IO.File]::WriteAllBytes($oldEntry,$oldBytes)
+    # Even byte-equal pre-receipt verifier inputs remain a conflict, not an
+    # automatic recovery permission. This file is created/removed by this fixture.
+    $adoptMeta=Join-Path $adoptHome '.agents/installations/copilot-api-proxy'
+    New-Item -ItemType Directory -Path $adoptMeta -Force | Out-Null
+    $foreignInput=Join-Path $adoptMeta 'install.ps1'
+    [IO.File]::WriteAllBytes($foreignInput,[IO.File]::ReadAllBytes((Join-Path $bundle 'install.ps1')))
+    $foreignDigest=Get-InstallHash $foreignInput
+    Refuses $adopt 'Foreign retained installation metadata'
+    if ((Get-InstallHash $foreignInput) -cne $foreignDigest -or (Get-InstallHash $oldEntry) -cne (Get-InstallHash (Join-Path $bundle 'dist/main.js'))) { throw 'Pre-receipt metadata refusal changed existing files.' }
+    Remove-Item -LiteralPath $foreignInput
+    Invoke-LocalInstall $adopt
+    Invoke-LocalInstall @{Version=$second.Version;Mode='Verify'}
     if ([IO.File]::ReadAllText((Join-Path $adoptRoot 'unknown.txt')) -cne 'unclaimed') { throw 'Adoption claimed an unknown neighbor.' }
     $inventories=@(Get-ChildItem -LiteralPath $work -Filter inventory.json -Recurse)
-    if (-not @($inventories | Where-Object { [IO.File]::ReadAllText($_.FullName).Contains((Join-Path $adoptRoot 'dist/main.js').Replace('\','\\')) }).Count) { throw 'Adoption did not retain overwritten file backup metadata.' }
+    if (-not @($inventories | Where-Object { [IO.File]::ReadAllText($_.FullName).Contains($oldEntry.Replace('\','\\')) }).Count) { throw 'Automatic adoption did not preserve overwritten owned-file backup metadata.' }
     $homeFixture=$options.UserRoot
     # Unsafe target links refuse without touching the actual installation.
     $junction=Join-Path $homeFixture 'linked-code'; New-Item -ItemType Junction -Path $junction -Target $root | Out-Null
     $wrong=Clone-Options; $wrong.InstallRoot=$junction; Refuses $wrong 'Linked path|authoritative'
-    Write-Host 'PASS: real package Check/Install/offline Verify, drift/no-op, forward update, explicit unchanged retirement, partial overlay/manual code-only recovery/reinstall, first-install explicit adoption, private backup and state/neighbor preservation.'
+    Write-Host 'PASS: real package automatic Node/profile/root Check, retained coordinates/offline Verify, drift/no-op, forward update, explicit unchanged retirement, consent-declined no-write, partial overlay/manual code-only recovery, exact-byte automatic adoption/refusal, private backup and state/neighbor preservation.'
 } finally {
     foreach ($key in $environment.Keys) { [Environment]::SetEnvironmentVariable($key,$environment[$key],'Process') }
     if ($junction -and (Test-Path -LiteralPath $junction)) { [IO.Directory]::Delete($junction) }

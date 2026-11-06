@@ -170,7 +170,7 @@ if ($BootstrapFixtures) {
     # closure, not agreement between two mutable release assets, must refuse them.
     $scratch=Join-Path $env:TEMP ('proxy-bootstrap-'+[guid]::NewGuid().ToString('N'))
     $originalEnvironment=@{}
-    foreach ($key in @('TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR','PSModulePath','PROXY_BOOTSTRAP_ASSETS','PROXY_BOOTSTRAP_MARKER','GITHUB_TOKEN','GH_TOKEN')) { $originalEnvironment[$key]=[Environment]::GetEnvironmentVariable($key,'Process') }
+    foreach ($key in @('TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR','PSModulePath','PROXY_BOOTSTRAP_ASSETS','PROXY_BOOTSTRAP_MARKER','PROXY_BOOTSTRAP_CASE','COPILOT_API_PROXY_INSTALL_HANDOFF','GITHUB_TOKEN','GH_TOKEN')) { $originalEnvironment[$key]=[Environment]::GetEnvironmentVariable($key,'Process') }
     try {
         New-Item -ItemType Directory -Path $scratch | Out-Null
         # A child must not auto-load a different edition's Security module.
@@ -208,8 +208,10 @@ exit 0
         $frontdoor=Join-Path $root 'install.ps1'; $frontBytes=[IO.File]::ReadAllBytes($frontdoor)
         $source='a'*40; $treeOid='b'*40; $tag='aaaaaaa'; $asset='copilot-proxy-'+$tag+'.zip'
         $backend=@'
-param($Version,$WorkRoot,$Mode,$UserRoot,$InstallRoot,$NodeExe,[int]$Port,[switch]$AdoptExisting,[switch]$Activate,$PackageReceipt,$ArchivePath,$Frontdoor,[switch]$NoStop,[switch]$NoStart,[switch]$SkipAutostart)
-[IO.File]::WriteAllText($env:PROXY_BOOTSTRAP_MARKER,'accepted source-bound fixture backend')
+param($Version,$WorkRoot,$Mode,$UserRoot,$InstallRoot,$NodeExe,[int]$Port,[switch]$Activate,$PackageReceipt,$ArchivePath,$Frontdoor,$ExistingPackageReceipt,[switch]$NoStop,[switch]$NoStart,[switch]$SkipAutostart)
+$expectedFrontdoor=Join-Path (Split-Path -Parent $PSScriptRoot) 'install.ps1'
+if ((Get-FileHash -LiteralPath $Frontdoor -Algorithm SHA256).Hash -cne (Get-FileHash -LiteralPath $expectedFrontdoor -Algorithm SHA256).Hash) { throw 'A mismatched saved frontdoor reached the backend without verified handoff.' }
+[IO.File]::WriteAllText($env:PROXY_BOOTSTRAP_MARKER,'accepted source-bound fixture backend after actual frontdoor hash agreement')
 exit 0
 '@
         $wrapper=@'
@@ -232,7 +234,7 @@ function Invoke-RestMethod {
     if (-not $Uri.StartsWith($prefix,[StringComparison]::Ordinal)) { throw ('Unmocked network refused: '+$Uri) }
     $endpoint=$Uri.Substring($prefix.Length)
     $routes=@{
-        'releases/tags/aaaaaaa'='release.json'; 'git/ref/tags/aaaaaaa'='reference.json';
+        'releases/latest'='release.json'; 'releases/tags/aaaaaaa'='release.json'; 'git/ref/tags/aaaaaaa'='reference.json';
         'git/commits/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'='commit.json';
         'git/trees/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb?recursive=1'='tree.json';
         'contents/install.ps1?ref=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'='front.json';
@@ -247,29 +249,38 @@ function Invoke-WebRequest {
     if ($Uri -cne ('https://github.com/gupta-ash/copilot-api-proxy/releases/download/aaaaaaa/'+$name) -or $name -cnotin @('copilot-proxy-aaaaaaa.zip','copilot-proxy-aaaaaaa.zip.json','install.ps1')) { throw ('Unmocked asset refused: '+$Uri) }
     [IO.File]::Copy((Join-Path $fixture $name),$OutFile)
 }
-& (Join-Path $fixture 'install.ps1') -Version aaaaaaa -WorkRoot (Join-Path $fixture 'work') -InstallRoot (Join-Path $fixture 'never-installed') -Mode Check
+$options=@{WorkRoot=(Join-Path $fixture 'work');InstallRoot=(Join-Path $fixture 'never-installed');Mode='Check'}
+if ($env:PROXY_BOOTSTRAP_CASE -notin @('latest stable default','verified handoff latest stable','latest prerelease refusal','latest draft refusal')) { $options.Version='aaaaaaa' }
+& (Join-Path $fixture 'saved-install.ps1') @options
 exit $LASTEXITCODE
 '@
         $cases=[ordered]@{
-            'valid source-bound closure'='';
-            'unexpected root executable'='Unexpected release member: unexpected.exe';
-            'unexpected operator'='Unexpected release member: scripts/unexpected.ps1';
-            'unexpected dist executable'='Unexpected generated dist member: dist/unexpected.exe';
-            'nested dist script'='Unexpected generated dist member: dist/nested/extra.js';
-            'missing operator'='Incomplete/static source mode mismatch: scripts/status_proxy.ps1';
-            'changed backend'='Static package bytes differ from committed source: scripts/install_bundle.ps1';
-            'changed verifier'='Static package bytes differ from committed source: scripts/install_local.ps1';
-            'changed static legal file'='Static package bytes differ from committed source: LICENSE';
-            'forged packaged declaration'='Packaged declaration differs from committed source';
-            'incomplete committed declaration'='Incomplete/unexpected committed static closure';
-            'missing committed backend'='Invalid/missing committed static source mapping';
-            'truncated source tree'='Incomplete/unbound committed source tree';
-            'wrong source tree identity'='Incomplete/unbound committed source tree';
-            'unbound declaration bytes'='Committed declaration bytes do not match its Git object';
-            'wrong committed frontdoor blob'='Executing frontdoor is not in the selected commit tree';
-            'missing generated map'='Incomplete generated release: dist/main.js.map';
-            'orphan generated map'='Incomplete generated dist/map pair: dist/extra.js.map';
-            'changed generated payload hash'='ZIP member digest mismatch: dist/main.js'
+            'valid source-bound closure'=$false;
+            'latest stable default'=$false;
+            'verified frontdoor handoff'=$false;
+            'verified handoff latest stable'=$false;
+            'bounded handoff refusal'=$true;
+            'latest prerelease refusal'=$true;
+            'latest draft refusal'=$true;
+            'unbound standalone frontdoor'=$true;
+            'unexpected root executable'=$true;
+            'unexpected operator'=$true;
+            'unexpected dist executable'=$true;
+            'nested dist script'=$true;
+            'missing operator'=$true;
+            'changed backend'=$true;
+            'changed verifier'=$true;
+            'changed static legal file'=$true;
+            'forged packaged declaration'=$true;
+            'incomplete committed declaration'=$true;
+            'missing committed backend'=$true;
+            'truncated source tree'=$true;
+            'wrong source tree identity'=$true;
+            'unbound declaration bytes'=$true;
+            'wrong committed frontdoor blob'=$true;
+            'missing generated map'=$true;
+            'orphan generated map'=$true;
+            'changed generated payload hash'=$true
         }
         $index=0
         foreach ($case in $cases.Keys) {
@@ -316,7 +327,7 @@ exit $LASTEXITCODE
             } finally { $zip.Dispose() }
             $receipt=[ordered]@{schema_version=1;component='copilot-proxy';source_repository='gupta-ash/copilot-api-proxy';source_commit=$source;tag=$tag;version=$tag;declaration_sha256=(Get-BytesHash $paths['deploy/release-files.json']);asset=$asset;asset_sha256=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant();built_utc='2026-01-01T00:00:00Z';payload=$rows}
             $base='https://github.com/gupta-ash/copilot-api-proxy/releases/download/'+$tag+'/'
-            $release=[ordered]@{tag_name=$tag;draft=$false;assets=@(@($asset,($asset+'.json'),'install.ps1') | ForEach-Object { [ordered]@{name=$_;browser_download_url=($base+$_)} })}
+            $release=[ordered]@{tag_name=$tag;draft=($case -ceq 'latest draft refusal');prerelease=($case -ceq 'latest prerelease refusal');assets=@(@($asset,($asset+'.json'),'install.ps1') | ForEach-Object { [ordered]@{name=$_;browser_download_url=($base+$_)} })}
             $front=[ordered]@{type='file';path='install.ps1';encoding='base64';sha=(Get-FixtureBlobHash $frontBytes);content=[Convert]::ToBase64String($frontBytes)}
             $declarationContent=[ordered]@{type='file';path='deploy/release-files.json';encoding='base64';sha=(Get-FixtureBlobHash $committed['deploy/release-files.json']);content=[Convert]::ToBase64String($committed['deploy/release-files.json'])}
             if ($case -ceq 'unbound declaration bytes') { $declarationContent.content=[Convert]::ToBase64String($utf8.GetBytes('{}')) }
@@ -325,6 +336,13 @@ exit $LASTEXITCODE
             $documents=@{'release.json'=$release;'reference.json'=[ordered]@{ref=('refs/tags/'+$tag);object=[ordered]@{type='commit';sha=$source}};'commit.json'=[ordered]@{sha=$source;tree=[ordered]@{sha=$treeOid}};'tree.json'=$tree;'front.json'=$front;'declaration.json'=$declarationContent;($asset+'.json')=$receipt}
             foreach ($name in $documents.Keys) { [IO.File]::WriteAllText((Join-Path $directory $name),($documents[$name] | ConvertTo-Json -Depth 12),$utf8) }
             [IO.File]::WriteAllBytes((Join-Path $directory 'install.ps1'),$frontBytes)
+            if ($case -ceq 'unbound standalone frontdoor') { [IO.File]::AppendAllText((Join-Path $directory 'install.ps1'),"`n# not the committed frontdoor") }
+            $saved=Join-Path $directory 'saved-install.ps1'
+            [IO.File]::WriteAllBytes($saved,$frontBytes)
+            if ($case -in @('verified frontdoor handoff','verified handoff latest stable','bounded handoff refusal')) { [IO.File]::AppendAllText($saved,"`n# previously saved frontdoor; never overwrite this file") }
+            $savedDigest=(Get-FileHash -LiteralPath $saved -Algorithm SHA256).Hash
+            $env:PROXY_BOOTSTRAP_CASE=$case
+            [Environment]::SetEnvironmentVariable('COPILOT_API_PROXY_INSTALL_HANDOFF',$(if ($case -ceq 'bounded handoff refusal') { '1' } else { $null }),'Process')
             $wrapperPath=Join-Path $directory 'run.ps1'; [IO.File]::WriteAllText($wrapperPath,$wrapper,$utf8)
             $env:PROXY_BOOTSTRAP_ASSETS=$directory; $env:PROXY_BOOTSTRAP_MARKER=Join-Path $directory 'backend-executed.txt'
             foreach ($key in @('TEMP','TMP','TMPDIR','CLAUDE_CODE_TMPDIR')) { [Environment]::SetEnvironmentVariable($key,(Join-Path $directory 'tmp'),'Process') }
@@ -335,8 +353,9 @@ exit $LASTEXITCODE
             $executed=Test-Path -LiteralPath $env:PROXY_BOOTSTRAP_MARKER -PathType Leaf
             if (-not $cases[$case]) {
                 if ($code -ne 0 -or -not $executed) { throw ('Valid bootstrap fixture failed: '+($output | Out-String)) }
-            } elseif ($code -eq 0 -or $executed -or ($output | Out-String) -notmatch [regex]::Escape($cases[$case])) { throw ("Bootstrap case '$case' did not refuse before backend execution: exit=$code executed=$executed "+($output | Out-String)) }
+            } elseif ($code -eq 0 -or $executed) { throw ("Bootstrap case '$case' did not refuse before backend execution: exit=$code executed=$executed "+($output | Out-String)) }
             if (Test-Path -LiteralPath (Join-Path $directory 'never-installed')) { throw 'Bootstrap fixture wrote an install target.' }
+            if ((Get-FileHash -LiteralPath $saved -Algorithm SHA256).Hash -cne $savedDigest) { throw 'Verified update overwrote the locally saved frontdoor.' }
             Write-Host ('PASS: bootstrap '+$case); $index++
         }
     } finally {

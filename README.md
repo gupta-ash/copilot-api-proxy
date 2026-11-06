@@ -20,32 +20,36 @@ The scripted installer supports Windows PowerShell **5.1+**, the actual invoking
 
 Release bundles retain all frozen production packages and their licenses, but omit unused package-manager `node_modules/.bin` launchers. Operators run the selected existing Node executable directly. The backend supports omitted switches under StrictMode, native .NET atomic replacement, and quoted local YAML paths on Windows PowerShell 5.1.
 
-Choose an **exact published release tag** from [Releases](https://github.com/gupta-ash/copilot-api-proxy/releases). Service tags are committed source prefixes, not `latest` or semantic-version ordering. Download that release's standalone committed `install.ps1`; do not pipe remote content into `iex`.
+Download the standalone frontdoor once from the [latest stable release](https://github.com/gupta-ash/copilot-api-proxy/releases/latest), save and inspect it, then run it locally. Do not pipe remote content into `iex`:
 
 ```powershell
-$Tag = '<exact-release-tag>'
-$Work = Join-Path $env:LOCALAPPDATA 'copilot-proxy-install\operation-001'
-New-Item -ItemType Directory -Path $Work -ErrorAction Stop | Out-Null
-$Installer = Join-Path $Work 'install.ps1'
-Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/gupta-ash/copilot-api-proxy/releases/download/$Tag/install.ps1" -OutFile $Installer
-$Node = (Get-Command node.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
-& $Installer -Version $Tag -WorkRoot $Work -NodeExe $Node -Mode Check
-if ($LASTEXITCODE) { throw 'Check refused; inspect the named prerequisite.' }
-& $Installer -Version $Tag -WorkRoot $Work -NodeExe $Node -Mode Install
-if ($LASTEXITCODE) { throw 'Install failed; preserve the reported diagnostics/backups.' }
-# Separate, offline, read-only invocation. No download/extraction/source is needed.
-& $Installer -Version $Tag -WorkRoot $Work -Mode Verify
+Invoke-WebRequest -UseBasicParsing -Uri 'https://github.com/gupta-ash/copilot-api-proxy/releases/latest/download/install.ps1' -OutFile './install.ps1'
+& ./install.ps1
 ```
 
-`-UserRoot` defaults to the actual invoking profile and cannot select another account. `-InstallRoot` defaults to a retained installation receipt, then the existing same-user `~/.local/share/copilot-proxy/install-dir.txt`, otherwise `~/.agents/services/copilot-proxy`. A conflicting existing root refuses; root relocation is not an upgrade. `-Port` defaults to 4143 on a fresh install and retains existing coordinates when omitted. `-NodeExe` likewise reuses the recorded executable. Supplied conflicting coordinates refuse. WorkRoot must already exist, be local/absolute/owned, and not overlap source, install, metadata or state roots. Child downloads, extraction, temporary files and caches stay there.
+**The same ordinary command installs or updates to the latest stable published release.** It resolves an exact tag/full commit before use, excludes drafts/prereleases from default selection, and refuses downgrade/divergent source. No profile, runtime or work-directory argument is required. Node is discovered from optional `-NodeExe`, then a retained selection on upgrade, then `NODE_EXE`, then `node.exe`/`node` on PATH. Invalid explicit/environment choices refuse; no runtime is provisioned and Python is not a prerequisite.
 
-The frontdoor dereferences annotated tags and binds repository, full commit, archive checksum, exact normalized ZIP member hashes/modes, release declaration and its own committed script bytes before executing the backend. A different frontdoor must be explicitly downloaded from the selected release; no silent self-replacement occurs. Upgrades must descend from the retained installed source; no implicit downgrade/retry occurs.
+The actual invoking OS profile is automatic and cannot be overridden. The code root comes from a retained receipt, then the same-user `~/.local/share/copilot-proxy/install-dir.txt`, otherwise `~/.agents/services/copilot-proxy`. Existing Node/root/port selections are retained; conflicting supplied coordinates refuse. Fresh port is 4143. Each network operation gets a new owned private directory under the actual user's LOCALAPPDATA, outside source, harness, code, metadata and state roots. Downloads, extraction, temporary files and caches stay there. The exact retained preservation location is printed; never purge backups as disposable cache.
 
-For the first takeover of a recognizable existing installation **without** a new receipt, add `-AdoptExisting` to Check and Install. Adoption is explicit, same-user and same-root; every overwritten owned file is privately backed up under WorkRoot. It cannot adopt an arbitrary foreign directory. Unknown neighbors remain untouched. Local edits to immutable owned code are conflicts, not permission to overwrite them. Obsolete files are removed only when explicitly declared retired, previously owned and still equal to their old installed hash. Private preservation paths are printed and retained: never treat them as disposable download cache.
+Advanced controls remain optional:
 
-Receipts and the self-contained verifier/input closure live at `~/.agents/installations/copilot-api-proxy/`. Verify checks actual owned files against retained package bindings and the expected version; it does not repair, download, query registrars, launch a process or prove live authentication. A matching `VERSION.txt` alone is never success. Same-version Install is a true no-op only after actual owned-file verification. Partial failures retain private diagnostics and report possible effects; individual writes are atomic, the entire installation is not.
+```powershell
+& ./install.ps1 -Mode Check                  # latest stable, full preflight, no live writes
+& ./install.ps1 -Version '<exact-release-tag>' # pin an exact release, not a branch or "latest"
+& ./install.ps1 -Mode Verify                 # retained version, offline/read-only, no WorkRoot needed
+# Verify a particular expected version without downloading it:
+& ./install.ps1 -Mode Verify -Version '<expected-installed-tag>'
+```
 
-A partial overlay deliberately remains a drift conflict; blind retry is not recovery. The failure prints exact private backup/inventory/candidate/effects paths. Follow [manual code-only recovery](docs/deployment.md#manual-code-only-recovery-after-a-partial-install): an authorized operator restores only prior-owned immutable files from verified backups when current bytes are old or this operation's verified candidate, removes only newly created unchanged candidate files, preserves all state/unknown files, verifies the old version, then reruns the reviewed upgrade. No automatic rollback/resume or arbitrary drift waiver exists. A recognizable partial first installation still requires explicit adoption if completing takeover without a successful receipt.
+`-WorkRoot` can select an existing local, absolute, current-user-owned nonoverlapping operation directory. `-InstallRoot`, `-NodeExe` and `-Port` are deliberate coordinate overrides, not required setup. Root/state relocation is not an upgrade.
+
+The frontdoor binds public repository, dereferenced full commit, committed declaration/static Git blobs, archive checksum and exact normalized member hashes/modes before executing downloaded code. If a later release has a different committed frontdoor, the saved script admits its complete release first and invokes that verified script once with the same resolved operation selections. It never overwrites the saved/running script, relies on checksum-only authority or recurses on another mismatch. Run the saved script outside installed code/metadata. Offline Verify directly runs the hash-bound retained verifier without network or scratch creation; it does not depend on profile-wide LOCALAPPDATA ownership or an older frontdoor's WorkRoot checks.
+
+A recognizable unreceipted installation is adopted automatically **only** when its exact VERSION/source identity resolves to an available public release and every prior owned immutable file still matches that fully verified release. Every overwritten owned file is privately backed up. Arbitrary foreign directories, missing/edited code, conflicting roots and unowned same-name files refuse; there is no adoption override. Unknown neighbors and private state remain untouched. Retirement still requires an explicit committed retired path and unchanged prior-owned bytes.
+
+Receipts and the self-contained verifier/input closure live at `~/.agents/installations/copilot-api-proxy/`. Every normal Install, including same-version no-op and successful selected-frontdoor handoff, independently binds and runs that retained verifier before the caller reports completion. Separate Verify checks actual package-bound owned files and retained coordinates; it does not repair, download, query registrars, launch Node or prove live authentication. A matching `VERSION.txt` alone is never success. Partial failures retain private diagnostics and report possible effects; individual writes are atomic, the entire installation is not.
+
+A partial overlay deliberately remains a drift conflict; blind retry is not recovery. The failure prints exact private backup/inventory/candidate/effects paths. Follow [manual code-only recovery](docs/deployment.md#manual-code-only-recovery-after-a-partial-install): restore only prior-owned immutable files from verified backups when current bytes are old or this operation's verified candidate, remove only newly created unchanged candidate files, preserve state/unknown files, verify the old version, then rerun the reviewed upgrade. No automatic rollback/resume or drift waiver exists. Partial first installs without complete exact-release bytes, or pre-receipt retained verifier metadata, refuse adoption and require the documented evidence-bound manual disposition.
 
 ## Authentication and activation are separate
 
@@ -54,13 +58,15 @@ Private APP_DIR remains `~/.local/share/copilot-proxy`. Preserve its `github_tok
 Authenticate interactively as the actual user, using the installed Node application:
 
 ```powershell
-$Root = Join-Path $env:USERPROFILE '.agents\services\copilot-proxy' # use your retained root
+$Receipt = Get-Content -LiteralPath (Join-Path $env:USERPROFILE '.agents/installations/copilot-api-proxy/installed.json') -Raw | ConvertFrom-Json
+$Root = $Receipt.parameters.InstallRoot
+$Node = $Receipt.parameters.NodeExe
 & $Node (Join-Path $Root 'dist\main.js') --list-models
 ```
 
 Follow the **displayed GitHub verification URL and device code**. The resulting token stays only in private APP_DIR. Normal first startup also performs that flow when no token exists. There is no separate `login` command. Choose a model ID actually returned by this catalog; access depends on your GitHub Copilot entitlement and current upstream availability.
 
-Installation defaults never stop/start a service or alter autostart. If code must change while an owned proxy is running, Install refuses before live mutation unless `-Activate` is selected. Re-run the exact selected-release command with `-Activate` and type the displayed complete confirmation binding component/version/current PID/root/live peer count. Existing peers are displayed; interrupting them requires that explicit consent and an immediate identity/peer recheck. Only the owned stop operator is called, its exit must succeed, then the installed start operator runs with `-BindHost 127.0.0.1 -Port <retained-port>`. A pre-existing no-rollback registrar variant is preserved. No mass port-based kill or automatic code/database rollback occurs.
+Installation never starts a stopped service or alters autostart by default. If an owned running proxy needs changed code, the ordinary local command offers the existing **exact interactive activation confirmation** before any stop/live write. Declining or noninteractive invocation refuses. You can instead stop the owned proxy explicitly first, or select `-Activate` for a deliberate restart/start. Confirmation binds component/version/current PID/root/live peer count; peers are displayed and rechecked. Only the owned stop operator is called, its exit must succeed, then the installed start operator runs with `-BindHost 127.0.0.1 -Port <retained-port>`. A pre-existing no-rollback registrar variant is preserved. No unattended restart, mass port kill or automatic code/database rollback occurs.
 
 For a stopped installation you can explicitly start it separately:
 

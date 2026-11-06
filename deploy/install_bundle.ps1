@@ -11,8 +11,8 @@ param(
     [ValidateSet('Check','Install','Verify')][string]$Mode='Install',
     [string]$UserRoot='', [string]$InstallRoot='', [string]$NodeExe='',
     [ValidateRange(1,65535)][int]$Port,
-    [switch]$AdoptExisting, [switch]$Activate,
-    [string]$PackageReceipt='', [string]$ArchivePath='', [string]$Frontdoor='',
+    [switch]$Activate,
+    [string]$PackageReceipt='', [string]$ArchivePath='', [string]$Frontdoor='', [string]$ExistingPackageReceipt='',
     [switch]$NoStop, [switch]$NoStart, [switch]$SkipAutostart
 )
 $ErrorActionPreference='Stop'
