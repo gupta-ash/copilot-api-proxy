@@ -103,6 +103,7 @@ function Assert-Receipt($Receipt,[string]$HomeRoot,[string]$CodeRoot,[string]$Me
     if ($Receipt.parameters.UserRoot -cne $HomeRoot -or $Receipt.parameters.InstallRoot -cne $CodeRoot -or ($Receipt.parameters.Port -isnot [int] -and $Receipt.parameters.Port -isnot [long]) -or $Receipt.parameters.Port -lt 1 -or $Receipt.parameters.Port -gt 65535) { throw 'Retained account/root/port mismatch.' }
     if (@($Receipt.configuration_paths).Count -ne 0 -or @($Receipt.held_paths).Count -ne 0) { throw 'Proxy receipt cannot claim unmanaged config or held files as installed.' }
     if ($null -ne $Receipt.last_code_change_utc) {
+        if ($Receipt.last_code_change_utc -is [DateTime] -and $Receipt.last_code_change_utc.Kind -ne [DateTimeKind]::Utc) { throw 'Code change timestamp must be UTC.' }
         $stamp=if ($Receipt.last_code_change_utc -is [DateTime]) { [DateTimeOffset]::new($Receipt.last_code_change_utc) } else { [DateTimeOffset]::Parse($Receipt.last_code_change_utc) }
         if ($stamp.Offset -ne [TimeSpan]::Zero) { throw 'Code change timestamp must be UTC.' }
     }

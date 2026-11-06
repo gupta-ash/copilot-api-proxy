@@ -80,7 +80,7 @@ Do not invoke `scripts/install_bundle.ps1` directly as a substitute for these ch
 
 Optional activation may be omitted under PowerShell StrictMode; omission is false, not a missing-property error. Offline Verify recovers omitted install-root and Node coordinates from its retained receipt rather than requiring repeated arguments. Supplied identity/root/runtime/port conflicts are forwarded intact to the retained verifier, never silently discarded.
 
-Retained UTC code-change timestamps verify on both Windows PowerShell 5.1 (JSON strings) and PowerShell 7 (JSON `DateTime` values); the verifier preserves the parsed timestamp's timezone instead of reparsing its culture-dependent display text.
+Retained code-change timestamps are serialized in UTC with a `Z` suffix. They verify on both Windows PowerShell 5.1 (JSON strings) and PowerShell 7 (JSON `DateTime` values). Typed dates must retain `Kind=Utc`; local/unspecified dates refuse even when the host happens to use UTC. The verifier never reparses a date's culture-dependent display text.
 
 ## Manual code-only recovery after a partial install
 
