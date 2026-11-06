@@ -196,7 +196,7 @@ try {
     # auth must not become success, retries, or automatic state/code rollback.
     $seams=@{}; foreach ($name in @('Get-OwnedProcess','Get-LauncherVariant','Confirm-LocalActivation','Invoke-OwnedOperator','Invoke-RestMethod')) { $seams[$name]=(Get-Command $name).ScriptBlock }
     $script:fixtureActivated=$false; $script:healthObservations=0; $script:operatorCalls=@()
-    $declined=New-FixtureRelease 'fixture-v5-declined' ('5'*40) $false $false
+    $declined=New-FixtureRelease 'fixture-v5-declined' ('5'*40) $true $false
     $beforeDecline=Get-InstallHash $installedPath
     function Get-OwnedProcess { return [pscustomobject]@{Id=2147482999;StartTime=[DateTime]::UtcNow} }
     function Get-LauncherVariant { return 'start_proxy_no_rollback.ps1' }
